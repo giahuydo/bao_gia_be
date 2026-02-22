@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 40px; color: #333; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
+    .header h1 { color: #2563eb; margin: 0; font-size: 28px; }
+    .header .quotation-number { color: #666; font-size: 14px; margin-top: 5px; }
+    .info-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
+    .info-block { width: 48%; }
+    .info-block h3 { color: #2563eb; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+    .info-block p { margin: 4px 0; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background-color: #2563eb; color: white; padding: 10px 8px; text-align: left; font-size: 13px; }
+    td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
+    tr:nth-child(even) { background-color: #f8f9fa; }
+    .totals { float: right; width: 300px; }
+    .totals table { margin-top: 0; }
+    .totals td { border: none; padding: 5px 8px; }
+    .totals .total-row { font-weight: bold; font-size: 16px; color: #2563eb; border-top: 2px solid #2563eb; }
+    .notes { margin-top: 30px; clear: both; }
+    .notes h3 { color: #2563eb; }
+    .notes p { font-size: 13px; white-space: pre-wrap; }
+    .footer { margin-top: 40px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 10px; }
+    .amount { text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>BAO GIA</h1>
+    <div class="quotation-number">{{quotationNumber}}</div>
+    <p style="font-size: 18px; margin-top: 10px;">{{title}}</p>
+  </div>
+
+  <div class="info-section">
+    <div class="info-block">
+      <h3>Khach hang</h3>
+      <p><strong>{{customer.name}}</strong></p>
+      {{#if customer.contactPerson}}<p>Nguoi lien he: {{customer.contactPerson}}</p>{{/if}}
+      {{#if customer.email}}<p>Email: {{customer.email}}</p>{{/if}}
+      {{#if customer.phone}}<p>SDT: {{customer.phone}}</p>{{/if}}
+      {{#if customer.address}}<p>Dia chi: {{customer.address}}</p>{{/if}}
+      {{#if customer.taxCode}}<p>MST: {{customer.taxCode}}</p>{{/if}}
+    </div>
+    <div class="info-block">
+      <h3>Thong tin bao gia</h3>
+      <p>Ngay tao: {{formatDate createdAt}}</p>
+      {{#if validUntil}}<p>Hieu luc den: {{formatDate validUntil}}</p>{{/if}}
+      <p>Trang thai: {{status}}</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%">#</th>
+        <th style="width: 35%">Ten hang muc</th>
+        <th style="width: 10%">DVT</th>
+        <th style="width: 10%" class="amount">SL</th>
+        <th style="width: 20%" class="amount">Don gia</th>
+        <th style="width: 20%" class="amount">Thanh tien</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{add @index 1}}</td>
+        <td>
+          {{this.name}}
+          {{#if this.description}}<br><small style="color: #666">{{this.description}}</small>{{/if}}
+        </td>
+        <td>{{this.unit}}</td>
+        <td class="amount">{{formatNumber this.quantity}}</td>
+        <td class="amount">{{formatCurrency this.unitPrice}}</td>
+        <td class="amount">{{formatCurrency this.amount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr>
+        <td>Tam tinh:</td>
+        <td class="amount">{{formatCurrency subtotal}}</td>
+      </tr>
+      {{#if discount}}
+      <tr>
+        <td>Giam gia ({{discount}}%):</td>
+        <td class="amount">-{{formatCurrency discountAmount}}</td>
+      </tr>
+      {{/if}}
+      {{#if tax}}
+      <tr>
+        <td>Thue ({{tax}}%):</td>
+        <td class="amount">{{formatCurrency taxAmount}}</td>
+      </tr>
+      {{/if}}
+      <tr class="total-row">
+        <td>TONG CONG:</td>
+        <td class="amount">{{formatCurrency total}}</td>
+      </tr>
+    </table>
+  </div>
+
+  {{#if notes}}
+  <div class="notes">
+    <h3>Ghi chu</h3>
+    <p>{{notes}}</p>
+  </div>
+  {{/if}}
+
+  {{#if terms}}
+  <div class="notes">
+    <h3>Dieu khoan</h3>
+    <p>{{terms}}</p>
+  </div>
+  {{/if}}
+
+  <div class="footer">
+    <p>Bao gia nay duoc tao tu dong boi he thong Bao Gia Management</p>
+  </div>
+</body>
+</html>
