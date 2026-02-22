@@ -4,12 +4,24 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
+import { Organization } from './organization.entity';
 
 @Entity('company_settings')
 export class CompanySettings {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index({ unique: true })
+  @Column({ name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column({ name: 'company_name' })
   companyName: string;

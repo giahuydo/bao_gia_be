@@ -6,13 +6,23 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Organization } from './organization.entity';
 
 @Entity('templates')
 export class Template {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index()
+  @Column({ name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column()
   name: string;

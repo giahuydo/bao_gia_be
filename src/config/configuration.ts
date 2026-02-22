@@ -22,4 +22,6 @@ export default () => ({
     // n8n base URL for backend → n8n webhook triggers
     baseUrl: process.env.N8N_BASE_URL || 'http://localhost:5679',
   },
+  // AES-256-GCM key for encrypting org-level secrets (hex-encoded, 32 bytes)
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 });

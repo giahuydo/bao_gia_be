@@ -10,6 +10,7 @@ import {
   HistoryAction,
 } from '../../database/entities/quotation-history.entity';
 import { Quotation } from '../../database/entities/quotation.entity';
+import { IngestionJob, JobStatus } from '../../database/entities/ingestion-job.entity';
 import {
   QuotationProcessedDto,
   ProcessingStatus,
@@ -21,8 +22,6 @@ import { ExecutionFailedDto } from './dto/execution-failed.dto';
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  // System actor ID used for n8n-triggered history entries.
-  // In production, seed a system user with this fixed UUID.
   static readonly SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000';
 
   constructor(
@@ -32,6 +31,8 @@ export class WebhooksService {
     private historyRepository: Repository<QuotationHistory>,
     @InjectRepository(Quotation)
     private quotationsRepository: Repository<Quotation>,
+    @InjectRepository(IngestionJob)
+    private jobsRepository: Repository<IngestionJob>,
   ) {}
 
   private mapProcessingStatus(status: ProcessingStatus): ExecutionStatus {
@@ -53,6 +54,8 @@ export class WebhooksService {
     processingTimeMs?: number;
     error?: string;
     payload?: Record<string, any>;
+    organizationId?: string;
+    correlationId?: string;
   }): N8nExecutionLog {
     return this.executionLogRepository.create({
       workflowName: data.workflowName,
@@ -62,6 +65,8 @@ export class WebhooksService {
       processingTimeMs: data.processingTimeMs,
       error: data.error,
       payload: data.payload,
+      organizationId: data.organizationId,
+      correlationId: data.correlationId,
     });
   }
 
@@ -178,8 +183,30 @@ export class WebhooksService {
       status: ExecutionStatus.FAILED,
       error: dto.error,
       payload: dto.inputData,
+      correlationId: (dto.inputData as any)?.correlationId,
+      organizationId: (dto.inputData as any)?.organizationId,
     });
     await this.executionLogRepository.save(log);
+
+    // If this failure is related to an ingestion job, mark it as dead letter
+    const jobId = (dto.inputData as any)?.jobId;
+    if (jobId) {
+      const job = await this.jobsRepository.findOne({ where: { id: jobId } });
+      if (job) {
+        const newStatus = job.retries >= job.maxRetries
+          ? JobStatus.DEAD_LETTER
+          : JobStatus.FAILED;
+        await this.jobsRepository.update(job.id, {
+          status: newStatus,
+          error: dto.error,
+          n8nExecutionId: dto.executionId,
+          completedAt: new Date(),
+        });
+        this.logger.log(
+          `Job ${jobId} marked as ${newStatus} | retries=${job.retries}/${job.maxRetries}`,
+        );
+      }
+    }
 
     return { received: true };
   }

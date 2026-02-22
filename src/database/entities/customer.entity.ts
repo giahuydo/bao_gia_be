@@ -8,14 +8,24 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Organization } from './organization.entity';
 import { Quotation } from './quotation.entity';
 
 @Entity('customers')
 export class Customer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index()
+  @Column({ name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column()
   name: string;

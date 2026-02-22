@@ -40,6 +40,13 @@ export class N8nExecutionLog {
   @Column({ name: 'processing_time_ms', type: 'int', nullable: true })
   processingTimeMs: number;
 
+  @Column({ name: 'organization_id', nullable: true })
+  organizationId: string;
+
+  @Index()
+  @Column({ name: 'correlation_id', nullable: true })
+  correlationId: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

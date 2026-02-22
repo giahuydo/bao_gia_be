@@ -12,6 +12,7 @@ export enum AiOperation {
   IMPROVE = 'improve',
   EXTRACT = 'extract',
   TRANSLATE = 'translate',
+  COMPARE = 'compare',
 }
 
 @Entity('token_usage')
@@ -52,6 +53,9 @@ export class TokenUsage {
 
   @Column({ name: 'n8n_execution_id', nullable: true })
   n8nExecutionId: string;
+
+  @Column({ name: 'prompt_version_id', nullable: true })
+  promptVersionId: string;
 
   @Index()
   @CreateDateColumn({ name: 'created_at' })

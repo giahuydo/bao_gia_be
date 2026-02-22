@@ -5,25 +5,21 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, MoreThan } from 'typeorm';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { Attachment } from '../../database/entities/attachment.entity';
 import { Product } from '../../database/entities/product.entity';
 import { Customer } from '../../database/entities/customer.entity';
+import { IngestionJob, JobStatus } from '../../database/entities/ingestion-job.entity';
+import { FileChecksumCache } from '../../database/entities/file-checksum-cache.entity';
+import { GlossaryTerm } from '../../database/entities/glossary-term.entity';
+import { AiPromptVersion, PromptType } from '../../database/entities/ai-prompt-version.entity';
 import { TokenTrackingService } from '../ai/token-tracking.service';
 import { AiOperation } from '../../database/entities/token-usage.entity';
 
-/**
- * Handles the AI-powered vendor quotation ingestion pipeline.
- * Each method is a discrete step called by n8n via the IngestionController.
- *
- * Pipeline: extract → translate → normalize
- *
- * All Claude API calls happen here (not in n8n) so prompts are
- * version-controlled, testable, and token usage can be tracked.
- */
 @Injectable()
 export class IngestionService {
   private readonly logger = new Logger(IngestionService.name);
@@ -38,9 +34,110 @@ export class IngestionService {
     private productsRepository: Repository<Product>,
     @InjectRepository(Customer)
     private customersRepository: Repository<Customer>,
+    @InjectRepository(IngestionJob)
+    private jobsRepository: Repository<IngestionJob>,
+    @InjectRepository(FileChecksumCache)
+    private checksumCacheRepository: Repository<FileChecksumCache>,
+    @InjectRepository(GlossaryTerm)
+    private glossaryRepository: Repository<GlossaryTerm>,
+    @InjectRepository(AiPromptVersion)
+    private promptVersionRepository: Repository<AiPromptVersion>,
   ) {
     const apiKey = this.configService.get<string>('anthropic.apiKey');
     this.client = new Anthropic({ apiKey });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private computeChecksum(filePath: string): string {
+    const buffer = fs.readFileSync(filePath);
+    return crypto.createHash('sha256').update(buffer).digest('hex');
+  }
+
+  private async getActivePrompt(type: PromptType): Promise<AiPromptVersion | null> {
+    return this.promptVersionRepository.findOne({
+      where: { type, isActive: true },
+    });
+  }
+
+  private async getGlossary(organizationId: string, category?: string): Promise<GlossaryTerm[]> {
+    const where: any = { organizationId };
+    if (category) where.category = category;
+    return this.glossaryRepository.find({ where });
+  }
+
+  private buildGlossaryPromptSection(terms: GlossaryTerm[]): string {
+    if (!terms.length) return '';
+    const termLines = terms
+      .map((t) => `- "${t.sourceTerm}" → "${t.targetTerm}"`)
+      .join('\n');
+    return `\n\nUse these EXACT translations (glossary):\n${termLines}\n`;
+  }
+
+  private async checkCacheHit(
+    checksum: string,
+    organizationId: string,
+  ): Promise<FileChecksumCache | null> {
+    const cached = await this.checksumCacheRepository.findOne({
+      where: {
+        checksum,
+        organizationId,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+    if (cached) {
+      // Update hit count
+      await this.checksumCacheRepository.update(cached.id, {
+        hitCount: cached.hitCount + 1,
+        lastHitAt: new Date(),
+      });
+    }
+    return cached;
+  }
+
+  private async saveToCache(
+    checksum: string,
+    organizationId: string,
+    attachment: Attachment,
+    extractResult: any,
+    translateResult: any,
+    promptVersionId?: string,
+  ): Promise<void> {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30-day TTL
+
+    await this.checksumCacheRepository.save({
+      checksum,
+      organizationId,
+      originalFileName: attachment.originalName,
+      mimeType: attachment.mimeType,
+      fileSize: attachment.fileSize,
+      extractResult,
+      translateResult,
+      promptVersionId,
+      expiresAt,
+    });
+  }
+
+  private async updateJobStatus(
+    jobId: string | undefined,
+    status: JobStatus,
+    data?: Partial<IngestionJob>,
+  ): Promise<void> {
+    if (!jobId) return;
+    const update: any = { status, ...data };
+    if (status === JobStatus.EXTRACTING || status === JobStatus.TRANSLATING || status === JobStatus.NORMALIZING) {
+      update.currentStep = status;
+    }
+    if (status === JobStatus.EXTRACTING && !data?.startedAt) {
+      update.startedAt = new Date();
+    }
+    if (status === JobStatus.COMPLETED || status === JobStatus.FAILED || status === JobStatus.DEAD_LETTER) {
+      update.completedAt = new Date();
+    }
+    await this.jobsRepository.update(jobId, update);
   }
 
   // ---------------------------------------------------------------------------
@@ -49,6 +146,8 @@ export class IngestionService {
   async extractFromDocument(
     attachmentId: string,
     executionId?: string,
+    jobId?: string,
+    organizationId?: string,
   ): Promise<{
     title: string | null;
     vendorName: string | null;
@@ -59,22 +158,55 @@ export class IngestionService {
       quantity: number;
       unitPrice: number;
       currency: string;
+      catalogNumber?: string;
+      category?: string;
     }>;
     notes: string | null;
     terms: string | null;
+    confidence?: number;
+    extractionWarnings?: string[];
     tokenUsage: { inputTokens: number; outputTokens: number };
+    cacheHit?: boolean;
   }> {
+    await this.updateJobStatus(jobId, JobStatus.EXTRACTING);
+
     const attachment = await this.attachmentsRepository.findOne({
       where: { id: attachmentId },
     });
     if (!attachment) {
+      await this.updateJobStatus(jobId, JobStatus.FAILED, { error: `Attachment ${attachmentId} not found` });
       throw new NotFoundException(`Attachment ${attachmentId} not found`);
     }
 
     if (!fs.existsSync(attachment.filePath)) {
-      throw new NotFoundException(
-        `File not found on disk: ${attachment.filePath}`,
-      );
+      await this.updateJobStatus(jobId, JobStatus.FAILED, { error: `File not found on disk` });
+      throw new NotFoundException(`File not found on disk: ${attachment.filePath}`);
+    }
+
+    // File checksum cache check
+    if (organizationId) {
+      const checksum = this.computeChecksum(attachment.filePath);
+      if (jobId) {
+        await this.jobsRepository.update(jobId, { fileChecksum: checksum });
+      }
+
+      const cached = await this.checkCacheHit(checksum, organizationId);
+      if (cached?.extractResult) {
+        this.logger.log(`Cache HIT for ${attachment.originalName} (checksum: ${checksum})`);
+        await this.updateJobStatus(jobId, JobStatus.EXTRACTING, { extractResult: cached.extractResult });
+        const cachedResult = cached.extractResult as any;
+        return {
+          title: cachedResult.title || null,
+          vendorName: cachedResult.vendorName || null,
+          items: cachedResult.items || [],
+          notes: cachedResult.notes || null,
+          terms: cachedResult.terms || null,
+          confidence: cachedResult.confidence,
+          extractionWarnings: cachedResult.extractionWarnings || [],
+          cacheHit: true,
+          tokenUsage: { inputTokens: 0, outputTokens: 0 },
+        };
+      }
     }
 
     const supportedMimeTypes = [
@@ -87,6 +219,7 @@ export class IngestionService {
     ];
 
     if (!supportedMimeTypes.includes(attachment.mimeType)) {
+      await this.updateJobStatus(jobId, JobStatus.FAILED, { error: `Unsupported file type: ${attachment.mimeType}` });
       throw new BadRequestException(
         `Unsupported file type: ${attachment.mimeType}. Supported: ${supportedMimeTypes.join(', ')}`,
       );
@@ -96,13 +229,11 @@ export class IngestionService {
     const base64Content = fileBuffer.toString('base64');
 
     this.logger.log(
-      `Extracting from ${attachment.originalName} (${attachment.mimeType}) | executionId=${executionId || 'none'}`,
+      `Extracting from ${attachment.originalName} (${attachment.mimeType}) | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     const isImage = attachment.mimeType.startsWith('image/');
 
-    // Build content blocks based on file type
-    // SDK v0.30 supports TextBlockParam and ImageBlockParam
     const userContent: Array<
       Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam
     > = [];
@@ -117,9 +248,6 @@ export class IngestionService {
         },
       });
     } else {
-      // PDF, DOCX, Text, CSV: extract text content and send as text block.
-      // For PDFs: in production, use a proper PDF-to-text library (pdf-parse).
-      // For now, send raw text for text-based files and base64 note for binary.
       const textContent = fileBuffer.toString('utf-8');
       userContent.push({
         type: 'text',
@@ -132,10 +260,11 @@ export class IngestionService {
       text: 'Extract all quotation items from this vendor document. Follow the JSON format specified in the system prompt exactly.',
     });
 
-    const response = await this.client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: `You are a specialized document extraction AI for laboratory and medical equipment quotations.
+    // Load active prompt version or use default
+    const promptVersion = await this.getActivePrompt(PromptType.EXTRACT);
+    const model = promptVersion?.model || 'claude-sonnet-4-20250514';
+    const maxTokens = promptVersion?.maxTokens || 8192;
+    const systemPrompt = promptVersion?.systemPrompt || `You are a specialized document extraction AI for laboratory and medical equipment quotations.
 
 Given a vendor quotation document (PDF, image, or text), extract ALL line items into structured JSON.
 
@@ -150,24 +279,32 @@ Return ONLY valid JSON in this exact format:
       "unit": "Unit of measure (unit, set, box, piece, etc.)",
       "quantity": 1,
       "unitPrice": 15000.00,
-      "currency": "USD"
+      "currency": "USD",
+      "catalogNumber": "Model/catalog number if available",
+      "category": "lab|biotech|icu|analytical|general"
     }
   ],
   "notes": "Any delivery, warranty, or general notes from the document",
-  "terms": "Payment terms, validity period, etc."
+  "terms": "Payment terms, validity period, etc.",
+  "confidence": 0.9,
+  "extractionWarnings": ["Any issues encountered during extraction"]
 }
 
 Rules:
 - Extract EVERY line item, do not skip any
+- NEVER invent items not in the document
 - Keep original language for product names (do not translate)
 - unitPrice must be a number (no currency symbols)
-- Identify the currency from context (USD, EUR, VND, etc.)
-- If quantity or price is unclear, use best estimate and note it in description
-- If the document is not a quotation, return items as empty array and put explanation in notes`,
+- Set null with warning if data is unclear (do not guess)
+- Classify each item into category (lab/biotech/icu/analytical/general)
+- Set confidence 0-1 based on extraction quality`;
+
+    const response = await this.client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
     });
-
-    const model = 'claude-sonnet-4-20250514';
 
     // Track token usage
     this.tokenTracking.track({
@@ -176,6 +313,8 @@ Rules:
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       n8nExecutionId: executionId,
+      tenantId: organizationId,
+      promptVersionId: promptVersion?.id,
     });
 
     const content = response.content[0];
@@ -185,32 +324,53 @@ Rules:
 
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new BadRequestException(
-        'Could not parse JSON from AI extraction response',
-      );
+      throw new BadRequestException('Could not parse JSON from AI extraction response');
     }
 
     const extracted = JSON.parse(jsonMatch[0]);
 
-    this.logger.log(
-      `Extracted ${extracted.items?.length || 0} items | tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`,
-    );
+    // Post-AI guardrails
+    const warnings = extracted.extractionWarnings || [];
+    if (extracted.items) {
+      for (const item of extracted.items) {
+        if (item.unitPrice === null && !warnings.some((w: string) => w.includes(item.name))) {
+          warnings.push(`Item "${item.name}" has null price — flagged for review`);
+        }
+        if (item.unitPrice > 10_000_000) {
+          warnings.push(`Item "${item.name}" has unusually high price: ${item.unitPrice}`);
+        }
+        if (item.quantity > 10_000) {
+          warnings.push(`Item "${item.name}" has unusually high quantity: ${item.quantity}`);
+        }
+      }
+    }
 
-    return {
+    const result = {
       title: extracted.title || null,
       vendorName: extracted.vendorName || null,
       items: extracted.items || [],
       notes: extracted.notes || null,
       terms: extracted.terms || null,
+      confidence: extracted.confidence,
+      extractionWarnings: warnings,
       tokenUsage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
       },
     };
+
+    // Update job with extract result
+    await this.updateJobStatus(jobId, JobStatus.EXTRACTING, { extractResult: result });
+
+    this.logger.log(
+      `Extracted ${result.items.length} items | tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`,
+    );
+
+    return result;
   }
 
   // ---------------------------------------------------------------------------
-  // Step 2: Translate extracted data to Vietnamese
+  // Step 2: Translate extracted data to Vietnamese (with glossary injection)
   // ---------------------------------------------------------------------------
   async translateToVietnamese(
     extractedData: {
@@ -228,6 +388,8 @@ Rules:
       terms?: string;
     },
     executionId?: string,
+    jobId?: string,
+    organizationId?: string,
   ): Promise<{
     title: string | null;
     vendorName: string | null;
@@ -242,15 +404,25 @@ Rules:
     notes: string | null;
     terms: string | null;
     tokenUsage: { inputTokens: number; outputTokens: number };
+    cacheHit?: boolean;
   }> {
+    await this.updateJobStatus(jobId, JobStatus.TRANSLATING);
+
     this.logger.log(
-      `Translating ${extractedData.items.length} items to Vietnamese | executionId=${executionId || 'none'}`,
+      `Translating ${extractedData.items.length} items to Vietnamese | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
-    const response = await this.client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: `You are a professional translator specializing in laboratory and medical equipment terminology.
+    // Load glossary for organization
+    const glossaryTerms = organizationId
+      ? await this.getGlossary(organizationId)
+      : [];
+    const glossarySection = this.buildGlossaryPromptSection(glossaryTerms);
+
+    // Load active prompt version or use default
+    const promptVersion = await this.getActivePrompt(PromptType.TRANSLATE);
+    const model = promptVersion?.model || 'claude-sonnet-4-20250514';
+    const maxTokens = promptVersion?.maxTokens || 8192;
+    const systemPrompt = (promptVersion?.systemPrompt || `You are a professional translator specializing in laboratory and medical equipment terminology.
 Translate the given quotation data from its original language to Vietnamese.
 
 Return ONLY valid JSON in the same structure as the input:
@@ -278,7 +450,12 @@ Rules:
 - Do NOT change numeric values (quantity, unitPrice)
 - Do NOT change currency codes
 - If text is already in Vietnamese, keep it as-is
-- Keep brand names untranslated`,
+- Keep brand names untranslated`) + glossarySection;
+
+    const response = await this.client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
       messages: [
         {
           role: 'user',
@@ -290,10 +467,12 @@ Rules:
     // Track token usage
     this.tokenTracking.track({
       operation: AiOperation.TRANSLATE,
-      model: 'claude-sonnet-4-20250514',
+      model,
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       n8nExecutionId: executionId,
+      tenantId: organizationId,
+      promptVersionId: promptVersion?.id,
     });
 
     const content = response.content[0];
@@ -303,18 +482,12 @@ Rules:
 
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new BadRequestException(
-        'Could not parse JSON from AI translation response',
-      );
+      throw new BadRequestException('Could not parse JSON from AI translation response');
     }
 
     const translated = JSON.parse(jsonMatch[0]);
 
-    this.logger.log(
-      `Translation complete | tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`,
-    );
-
-    return {
+    const result = {
       title: translated.title || null,
       vendorName: translated.vendorName || null,
       items: translated.items || [],
@@ -325,6 +498,15 @@ Rules:
         outputTokens: response.usage.output_tokens,
       },
     };
+
+    // Update job with translate result
+    await this.updateJobStatus(jobId, JobStatus.TRANSLATING, { translateResult: result });
+
+    this.logger.log(
+      `Translation complete | tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`,
+    );
+
+    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -347,6 +529,8 @@ Rules:
     },
     customerId?: string,
     executionId?: string,
+    jobId?: string,
+    organizationId?: string,
   ): Promise<{
     title: string;
     customerId: string | null;
@@ -365,17 +549,22 @@ Rules:
     terms: string | null;
     warnings: string[];
   }> {
+    await this.updateJobStatus(jobId, JobStatus.NORMALIZING);
+
     this.logger.log(
-      `Normalizing ${translatedData.items.length} items | executionId=${executionId || 'none'}`,
+      `Normalizing ${translatedData.items.length} items | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     const warnings: string[] = [];
 
-    // Match customer if vendorName is provided and no customerId given
+    // Scope customer/product queries by organization if available
+    const orgFilter: any = organizationId ? { organizationId } : {};
+
+    // Match customer
     let customerMatch: { id: string; name: string } | null = null;
     if (customerId) {
       const customer = await this.customersRepository.findOne({
-        where: { id: customerId },
+        where: { id: customerId, ...orgFilter },
       });
       if (customer) {
         customerMatch = { id: customer.id, name: customer.name };
@@ -384,7 +573,7 @@ Rules:
       }
     } else if (translatedData.vendorName) {
       const customer = await this.customersRepository.findOne({
-        where: { name: ILike(`%${translatedData.vendorName}%`) },
+        where: { name: ILike(`%${translatedData.vendorName}%`), ...orgFilter },
       });
       if (customer) {
         customerMatch = { id: customer.id, name: customer.name };
@@ -401,18 +590,18 @@ Rules:
         let productId: string | null = null;
         let matchConfidence: 'exact' | 'fuzzy' | 'none' = 'none';
 
-        // Try exact name match first
+        const productFilter = { ...orgFilter, isActive: true };
+
         const exactMatch = await this.productsRepository.findOne({
-          where: { name: item.name, isActive: true },
+          where: { name: item.name, ...productFilter },
         });
 
         if (exactMatch) {
           productId = exactMatch.id;
           matchConfidence = 'exact';
         } else {
-          // Try fuzzy match (ILIKE)
           const fuzzyMatch = await this.productsRepository.findOne({
-            where: { name: ILike(`%${item.name}%`), isActive: true },
+            where: { name: ILike(`%${item.name}%`), ...productFilter },
           });
           if (fuzzyMatch) {
             productId = fuzzyMatch.id;
@@ -423,7 +612,6 @@ Rules:
           }
         }
 
-        // Validate numeric fields
         const quantity = Number(item.quantity);
         const unitPrice = Number(item.unitPrice);
 
@@ -455,11 +643,7 @@ Rules:
       translatedData.title ||
       `Bao gia tu ${translatedData.vendorName || 'nha cung cap'}`;
 
-    this.logger.log(
-      `Normalization complete: ${normalizedItems.length} items, ${warnings.length} warnings`,
-    );
-
-    return {
+    const result = {
       title,
       customerId: customerMatch?.id || null,
       customerMatch,
@@ -468,5 +652,34 @@ Rules:
       terms: translatedData.terms || null,
       warnings,
     };
+
+    // Update job with normalize result
+    await this.updateJobStatus(jobId, JobStatus.NORMALIZING, { normalizeResult: result });
+
+    // Save to checksum cache if we have org context
+    if (organizationId && jobId) {
+      const job = await this.jobsRepository.findOne({ where: { id: jobId } });
+      if (job?.fileChecksum) {
+        const attachment = await this.attachmentsRepository.findOne({
+          where: { id: job.attachmentId },
+        });
+        if (attachment) {
+          await this.saveToCache(
+            job.fileChecksum,
+            organizationId,
+            attachment,
+            job.extractResult,
+            job.translateResult,
+            job.promptVersionId,
+          );
+        }
+      }
+    }
+
+    this.logger.log(
+      `Normalization complete: ${normalizedItems.length} items, ${warnings.length} warnings`,
+    );
+
+    return result;
   }
 }

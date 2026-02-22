@@ -5,7 +5,9 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
+import { Organization } from './organization.entity';
 import { Quotation } from './quotation.entity';
 import { User } from './user.entity';
 
@@ -13,6 +15,14 @@ import { User } from './user.entity';
 export class Attachment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index()
+  @Column({ name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column({ name: 'quotation_id' })
   quotationId: string;

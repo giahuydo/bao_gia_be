@@ -20,6 +20,11 @@ export enum HistoryAction {
   NORMALIZED = 'normalized',
   EMAIL_SENT = 'email_sent',
   INGESTION_FAILED = 'ingestion_failed',
+  VERSION_CREATED = 'version_created',
+  REVIEW_REQUESTED = 'review_requested',
+  REVIEW_APPROVED = 'review_approved',
+  REVIEW_REJECTED = 'review_rejected',
+  COMPARISON_RUN = 'comparison_run',
 }
 
 @Entity('quotation_history')

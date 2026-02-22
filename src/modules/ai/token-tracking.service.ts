@@ -26,6 +26,7 @@ export interface TrackTokenParams {
   userId?: string;
   tenantId?: string;
   n8nExecutionId?: string;
+  promptVersionId?: string;
 }
 
 export interface UsageSummary {
@@ -87,6 +88,7 @@ export class TokenTrackingService {
       userId: params.userId,
       tenantId: params.tenantId,
       n8nExecutionId: params.n8nExecutionId,
+      promptVersionId: params.promptVersionId,
     });
 
     try {

@@ -6,11 +6,12 @@ import { WebhooksService } from './webhooks.service';
 import { N8nExecutionLog } from '../../database/entities/n8n-execution-log.entity';
 import { QuotationHistory } from '../../database/entities/quotation-history.entity';
 import { Quotation } from '../../database/entities/quotation.entity';
+import { IngestionJob } from '../../database/entities/ingestion-job.entity';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([N8nExecutionLog, QuotationHistory, Quotation]),
+    TypeOrmModule.forFeature([N8nExecutionLog, QuotationHistory, Quotation, IngestionJob]),
   ],
   controllers: [WebhooksController],
   providers: [WebhooksService],

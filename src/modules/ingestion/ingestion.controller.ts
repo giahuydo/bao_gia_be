@@ -17,6 +17,8 @@ import { NormalizeDataDto } from './dto/normalize-data.dto';
 @ApiTags('ingestion')
 @ApiHeader({ name: 'X-Service-Key', required: true })
 @ApiHeader({ name: 'X-N8N-Execution-Id', required: false })
+@ApiHeader({ name: 'X-Job-Id', required: false })
+@ApiHeader({ name: 'X-Organization-Id', required: false })
 @Controller('ingestion')
 @UseGuards(ServiceAuthGuard)
 export class IngestionController {
@@ -32,15 +34,19 @@ export class IngestionController {
   })
   async extract(@Body() dto: ExtractDocumentDto, @Req() req: Request) {
     const executionId = (req as any).n8nExecutionId;
+    const jobId = req.headers['x-job-id'] as string;
+    const organizationId = req.headers['x-organization-id'] as string;
     const startTime = Date.now();
 
     this.logger.log(
-      `POST /ingestion/extract | attachmentId=${dto.attachmentId} | executionId=${executionId || 'none'}`,
+      `POST /ingestion/extract | attachmentId=${dto.attachmentId} | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     const result = await this.ingestionService.extractFromDocument(
       dto.attachmentId,
       executionId,
+      jobId,
+      organizationId,
     );
 
     this.logger.log(
@@ -54,19 +60,23 @@ export class IngestionController {
   @ApiOperation({
     summary: 'Translate extracted quotation data to Vietnamese',
     description:
-      'Takes extracted data (from /extract step), translates all fields to Vietnamese using Claude. Called by n8n ingestion workflow.',
+      'Takes extracted data (from /extract step), translates all fields to Vietnamese using Claude. Injects org glossary terms. Called by n8n ingestion workflow.',
   })
   async translate(@Body() dto: TranslateDataDto, @Req() req: Request) {
     const executionId = (req as any).n8nExecutionId;
+    const jobId = req.headers['x-job-id'] as string;
+    const organizationId = req.headers['x-organization-id'] as string;
     const startTime = Date.now();
 
     this.logger.log(
-      `POST /ingestion/translate | items=${dto.extractedData.items.length} | executionId=${executionId || 'none'}`,
+      `POST /ingestion/translate | items=${dto.extractedData.items.length} | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     const result = await this.ingestionService.translateToVietnamese(
       dto.extractedData,
       executionId,
+      jobId,
+      organizationId,
     );
 
     this.logger.log(
@@ -84,16 +94,20 @@ export class IngestionController {
   })
   async normalize(@Body() dto: NormalizeDataDto, @Req() req: Request) {
     const executionId = (req as any).n8nExecutionId;
+    const jobId = req.headers['x-job-id'] as string;
+    const organizationId = req.headers['x-organization-id'] as string;
     const startTime = Date.now();
 
     this.logger.log(
-      `POST /ingestion/normalize | items=${dto.translatedData.items.length} | executionId=${executionId || 'none'}`,
+      `POST /ingestion/normalize | items=${dto.translatedData.items.length} | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     const result = await this.ingestionService.normalizeData(
       dto.translatedData,
       dto.customerId,
       executionId,
+      jobId,
+      organizationId,
     );
 
     this.logger.log(

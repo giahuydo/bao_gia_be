@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../database/entities/user.entity';
+import { OrganizationMember } from '../../database/entities/organization-member.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -16,6 +17,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(OrganizationMember)
+    private orgMemberRepository: Repository<OrganizationMember>,
     private jwtService: JwtService,
   ) {}
 
@@ -33,7 +36,7 @@ export class AuthService {
       password: hashedPassword,
     });
     const savedUser = await this.usersRepository.save(user);
-    const token = this.generateToken(savedUser);
+    const token = await this.generateToken(savedUser);
 
     const { password, ...result } = savedUser;
     return { user: result, accessToken: token };
@@ -56,13 +59,24 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const token = this.generateToken(user);
+    const token = await this.generateToken(user);
     const { password, ...result } = user;
     return { user: result, accessToken: token };
   }
 
-  private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+  private async generateToken(user: User): Promise<string> {
+    // Find user's default organization (first active membership)
+    const membership = await this.orgMemberRepository.findOne({
+      where: { userId: user.id, isActive: true },
+    });
+    const payload: Record<string, any> = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    if (membership) {
+      payload.organizationId = membership.organizationId;
+    }
     return this.jwtService.sign(payload);
   }
 }

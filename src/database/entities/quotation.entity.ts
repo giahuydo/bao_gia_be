@@ -9,14 +9,17 @@ import {
   OneToMany,
   JoinColumn,
   VersionColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Organization } from './organization.entity';
 import { Customer } from './customer.entity';
 import { QuotationItem } from './quotation-item.entity';
 import { Template } from './template.entity';
 import { Currency } from './currency.entity';
 import { Attachment } from './attachment.entity';
 import { QuotationHistory } from './quotation-history.entity';
+import { QuotationVersion } from './quotation-version.entity';
 
 export enum QuotationStatus {
   DRAFT = 'draft',
@@ -30,6 +33,14 @@ export enum QuotationStatus {
 export class Quotation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index()
+  @Column({ name: 'organization_id' })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column({ name: 'quotation_number', unique: true })
   quotationNumber: string;
@@ -100,6 +111,9 @@ export class Quotation {
 
   @OneToMany(() => QuotationHistory, (history) => history.quotation)
   history: QuotationHistory[];
+
+  @OneToMany(() => QuotationVersion, (version) => version.quotation)
+  versions: QuotationVersion[];
 
   @VersionColumn()
   version: number;
