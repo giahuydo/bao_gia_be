@@ -124,7 +124,9 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
             PriceRecord,
             PriceAlert,
           ],
-          synchronize: configService.get('NODE_ENV') !== 'production',
+          synchronize:
+            configService.get('DB_SYNCHRONIZE') === 'true' ||
+            configService.get('NODE_ENV') !== 'production',
           logging: configService.get('NODE_ENV') === 'development',
         };
       },

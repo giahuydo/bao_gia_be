@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm install && npm run build && npm run migration:run
+    buildCommand: npm ci && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /api/health
     envVars:
@@ -18,6 +18,8 @@ services:
         value: production
       - key: PORT
         value: "4001"
+      - key: DB_SYNCHRONIZE
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: bao-gia-db
