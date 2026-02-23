@@ -25,11 +25,11 @@ services:
           name: bao-gia-db
           property: connectionString
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
       - key: JWT_EXPIRATION
         value: 7d
       - key: CORS_ORIGIN
-        sync: false
+        value: https://bao-gia-fe.vercel.app,http://localhost:4000
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: N8N_SERVICE_KEY
