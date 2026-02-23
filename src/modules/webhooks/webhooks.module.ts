@@ -7,11 +7,13 @@ import { N8nExecutionLog } from '../../database/entities/n8n-execution-log.entit
 import { QuotationHistory } from '../../database/entities/quotation-history.entity';
 import { Quotation } from '../../database/entities/quotation.entity';
 import { IngestionJob } from '../../database/entities/ingestion-job.entity';
+import { PriceMonitoringModule } from '../price-monitoring/price-monitoring.module';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([N8nExecutionLog, QuotationHistory, Quotation, IngestionJob]),
+    PriceMonitoringModule,
   ],
   controllers: [WebhooksController],
   providers: [WebhooksService],

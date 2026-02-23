@@ -19,3 +19,6 @@ export { RuleSet, RuleCategory } from './rule-set.entity';
 export { FileChecksumCache } from './file-checksum-cache.entity';
 export { QuotationVersion } from './quotation-version.entity';
 export { ReviewRequest, ReviewType, ReviewStatus } from './review-request.entity';
+export { PriceMonitoringJob, PriceMonitoringJobStatus, PriceMonitoringTriggerType } from './price-monitoring-job.entity';
+export { PriceRecord } from './price-record.entity';
+export { PriceAlert, PriceAlertSeverity } from './price-alert.entity';

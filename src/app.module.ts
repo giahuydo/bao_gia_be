@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import configuration from './config/configuration';
 
 // Existing entities
@@ -27,6 +28,9 @@ import { RuleSet } from './database/entities/rule-set.entity';
 import { FileChecksumCache } from './database/entities/file-checksum-cache.entity';
 import { QuotationVersion } from './database/entities/quotation-version.entity';
 import { ReviewRequest } from './database/entities/review-request.entity';
+import { PriceMonitoringJob } from './database/entities/price-monitoring-job.entity';
+import { PriceRecord } from './database/entities/price-record.entity';
+import { PriceAlert } from './database/entities/price-alert.entity';
 
 // Existing modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -50,6 +54,13 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PromptsModule } from './modules/prompts/prompts.module';
 import { GlossaryModule } from './modules/glossary/glossary.module';
 import { RulesModule } from './modules/rules/rules.module';
+import { PriceMonitoringModule } from './modules/price-monitoring/price-monitoring.module';
+
+// Infrastructure
+import { N8nTriggerModule } from './common/services/n8n-trigger.module';
+
+// Telegram
+import { TelegramModule } from './modules/telegram/telegram.module';
 
 // Health
 import { HealthModule } from './modules/health/health.module';
@@ -63,6 +74,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       isGlobal: true,
       load: [configuration],
     }),
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -97,6 +109,10 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
           FileChecksumCache,
           QuotationVersion,
           ReviewRequest,
+          // Price Monitoring
+          PriceMonitoringJob,
+          PriceRecord,
+          PriceAlert,
         ],
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: configService.get('NODE_ENV') === 'development',
@@ -123,7 +139,10 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     PromptsModule,
     GlossaryModule,
     RulesModule,
+    PriceMonitoringModule,
     // Infrastructure
+    N8nTriggerModule,
+    TelegramModule.forRoot(),
     HealthModule,
   ],
 })

@@ -5,6 +5,8 @@ import { WebhookSecretGuard } from '../../common/guards/webhook-secret.guard';
 import { QuotationProcessedDto } from './dto/quotation-processed.dto';
 import { DeliveryCompletedDto } from './dto/delivery-completed.dto';
 import { ExecutionFailedDto } from './dto/execution-failed.dto';
+import { PriceMonitoringCallbackDto } from '../price-monitoring/dto/price-monitoring-callback.dto';
+import { PriceMonitoringService } from '../price-monitoring/price-monitoring.service';
 
 @ApiTags('webhooks')
 @ApiHeader({ name: 'X-Webhook-Secret', required: true })
@@ -13,7 +15,10 @@ import { ExecutionFailedDto } from './dto/execution-failed.dto';
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 
-  constructor(private readonly webhooksService: WebhooksService) {}
+  constructor(
+    private readonly webhooksService: WebhooksService,
+    private readonly priceMonitoringService: PriceMonitoringService,
+  ) {}
 
   @Post('quotation-processed')
   @ApiOperation({
@@ -52,5 +57,17 @@ export class WebhooksController {
       `POST /webhooks/n8n/execution-failed | executionId=${dto.executionId}`,
     );
     return this.webhooksService.handleExecutionFailed(dto);
+  }
+
+  @Post('price-monitoring-completed')
+  @ApiOperation({
+    summary: 'n8n callback: price monitoring completed',
+    description: 'Called by n8n after price monitoring workflow completes.',
+  })
+  priceMonitoringCompleted(@Body() dto: PriceMonitoringCallbackDto) {
+    this.logger.log(
+      `POST /webhooks/n8n/price-monitoring-completed | jobId=${dto.jobId}`,
+    );
+    return this.priceMonitoringService.handleCallback(dto);
   }
 }
