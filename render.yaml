@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npm run build
+    buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm ci && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /api/health
     envVars:
@@ -19,6 +19,8 @@ services:
       - key: PORT
         value: "4001"
       - key: DB_SYNCHRONIZE
+        value: "true"
+      - key: PUPPETEER_SKIP_DOWNLOAD
         value: "true"
       - key: DATABASE_URL
         fromDatabase:
