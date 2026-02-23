@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WebhooksService } from './webhooks.service';
 import { N8nExecutionLog } from '../../database/entities/n8n-execution-log.entity';
 import { QuotationHistory } from '../../database/entities/quotation-history.entity';
 import { Quotation } from '../../database/entities/quotation.entity';
+import { IngestionJob } from '../../database/entities/ingestion-job.entity';
 import { ProcessingStatus } from './dto/quotation-processed.dto';
 
 describe('WebhooksService', () => {
@@ -12,6 +14,7 @@ describe('WebhooksService', () => {
   let mockExecutionLogRepo: Record<string, jest.Mock>;
   let mockHistoryRepo: Record<string, jest.Mock>;
   let mockQuotationsRepo: Record<string, jest.Mock>;
+  let mockJobsRepo: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     mockExecutionLogRepo = {
@@ -25,6 +28,10 @@ describe('WebhooksService', () => {
     mockQuotationsRepo = {
       findOne: jest.fn(),
     };
+    mockJobsRepo = {
+      findOne: jest.fn(),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -32,6 +39,8 @@ describe('WebhooksService', () => {
         { provide: getRepositoryToken(N8nExecutionLog), useValue: mockExecutionLogRepo },
         { provide: getRepositoryToken(QuotationHistory), useValue: mockHistoryRepo },
         { provide: getRepositoryToken(Quotation), useValue: mockQuotationsRepo },
+        { provide: getRepositoryToken(IngestionJob), useValue: mockJobsRepo },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

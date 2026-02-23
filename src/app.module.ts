@@ -78,45 +78,56 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
-        entities: [
-          // Existing
-          User,
-          Customer,
-          Product,
-          Quotation,
-          QuotationItem,
-          Template,
-          Currency,
-          CompanySettings,
-          Attachment,
-          QuotationHistory,
-          N8nExecutionLog,
-          TokenUsage,
-          // New (SaaS extension)
-          Organization,
-          OrganizationMember,
-          GlossaryTerm,
-          AiPromptVersion,
-          IngestionJob,
-          RuleSet,
-          FileChecksumCache,
-          QuotationVersion,
-          ReviewRequest,
-          // Price Monitoring
-          PriceMonitoringJob,
-          PriceRecord,
-          PriceAlert,
-        ],
-        synchronize: configService.get('NODE_ENV') !== 'production',
-        logging: configService.get('NODE_ENV') === 'development',
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('database.url');
+        const baseConfig = databaseUrl
+          ? {
+              url: databaseUrl,
+              ssl: { rejectUnauthorized: false },
+            }
+          : {
+              host: configService.get<string>('database.host'),
+              port: configService.get<number>('database.port'),
+              username: configService.get<string>('database.username'),
+              password: configService.get<string>('database.password'),
+              database: configService.get<string>('database.database'),
+            };
+        return {
+          type: 'postgres' as const,
+          ...baseConfig,
+          entities: [
+            // Existing
+            User,
+            Customer,
+            Product,
+            Quotation,
+            QuotationItem,
+            Template,
+            Currency,
+            CompanySettings,
+            Attachment,
+            QuotationHistory,
+            N8nExecutionLog,
+            TokenUsage,
+            // New (SaaS extension)
+            Organization,
+            OrganizationMember,
+            GlossaryTerm,
+            AiPromptVersion,
+            IngestionJob,
+            RuleSet,
+            FileChecksumCache,
+            QuotationVersion,
+            ReviewRequest,
+            // Price Monitoring
+            PriceMonitoringJob,
+            PriceRecord,
+            PriceAlert,
+          ],
+          synchronize: configService.get('NODE_ENV') !== 'production',
+          logging: configService.get('NODE_ENV') === 'development',
+        };
+      },
     }),
     // Existing modules
     AuthModule,

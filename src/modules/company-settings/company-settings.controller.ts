@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../database/entities/user.entity';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('company-settings')
 @ApiBearerAuth()
@@ -16,15 +17,15 @@ export class CompanySettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get company settings' })
-  get() {
-    return this.companySettingsService.get();
+  get(@CurrentUser() user: any) {
+    return this.companySettingsService.get(user.organizationId);
   }
 
   @Put()
   @ApiOperation({ summary: 'Update company settings' })
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  update(@Body() dto: UpdateCompanySettingsDto) {
-    return this.companySettingsService.update(dto);
+  update(@Body() dto: UpdateCompanySettingsDto, @CurrentUser() user: any) {
+    return this.companySettingsService.update(dto, user.organizationId);
   }
 }

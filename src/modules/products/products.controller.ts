@@ -27,31 +27,31 @@ export class ProductsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a product/service' })
-  create(@Body() createDto: CreateProductDto, @CurrentUser() user: User) {
-    return this.productsService.create(createDto, user.id);
+  create(@Body() createDto: CreateProductDto, @CurrentUser() user: any) {
+    return this.productsService.create(createDto, user.id, user.organizationId);
   }
 
   @Get()
   @ApiOperation({ summary: 'List products with pagination, search, and category filter' })
-  findAll(@Query() queryDto: ProductQueryDto) {
-    return this.productsService.findAll(queryDto);
+  findAll(@Query() queryDto: ProductQueryDto, @CurrentUser() user: any) {
+    return this.productsService.findAll(queryDto, user.organizationId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.productsService.findOne(id, user.organizationId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a product' })
-  update(@Param('id') id: string, @Body() updateDto: UpdateProductDto) {
-    return this.productsService.update(id, updateDto);
+  update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @CurrentUser() user: any) {
+    return this.productsService.update(id, updateDto, user.organizationId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a product' })
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.productsService.remove(id, user.organizationId);
   }
 }

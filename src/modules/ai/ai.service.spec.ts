@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { AiService } from './ai.service';
 import { TokenTrackingService } from './token-tracking.service';
+import { Organization } from '../../database/entities/organization.entity';
+import { TokenUsage } from '../../database/entities/token-usage.entity';
 
 // Mock Anthropic SDK
 const mockCreate = jest.fn();
@@ -31,6 +34,23 @@ describe('AiService', () => {
           useValue: { get: jest.fn().mockReturnValue('test-api-key') },
         },
         { provide: TokenTrackingService, useValue: mockTokenTracking },
+        {
+          provide: getRepositoryToken(Organization),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(TokenUsage),
+          useValue: { createQueryBuilder: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnThis(),
+            addSelect: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            andWhere: jest.fn().mockReturnThis(),
+            groupBy: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            getRawMany: jest.fn().mockResolvedValue([]),
+            getRawOne: jest.fn().mockResolvedValue(null),
+          }) },
+        },
       ],
     }).compile();
 

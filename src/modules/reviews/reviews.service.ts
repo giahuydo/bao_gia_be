@@ -1,14 +1,17 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ReviewRequest, ReviewStatus } from '../../database/entities/review-request.entity';
 import { CreateReviewDto, ApproveReviewDto, RejectReviewDto, RequestRevisionDto } from './dto/create-review.dto';
+import { ReviewRequestCreatedEvent } from '../telegram/events/telegram.events';
 
 @Injectable()
 export class ReviewsService {
   constructor(
     @InjectRepository(ReviewRequest)
     private reviewRepository: Repository<ReviewRequest>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async create(dto: CreateReviewDto, userId: string, orgId: string) {
@@ -18,7 +21,27 @@ export class ReviewsService {
       requestedBy: userId,
       status: ReviewStatus.PENDING,
     });
-    return this.reviewRepository.save(review);
+    const saved = await this.reviewRepository.save(review);
+
+    // Load relations for event
+    const full = await this.reviewRepository.findOne({
+      where: { id: saved.id },
+      relations: ['requestedByUser', 'assignedToUser', 'quotation'],
+    });
+
+    this.eventEmitter.emit(
+      'review.created',
+      new ReviewRequestCreatedEvent(
+        saved.id,
+        saved.type,
+        full?.requestedByUser?.fullName || userId,
+        (full?.quotation as any)?.id,
+        (full?.quotation as any)?.quotationNumber,
+        full?.assignedToUser?.fullName,
+      ),
+    );
+
+    return saved;
   }
 
   async findAll(orgId: string, filters: { status?: string; type?: string; page?: number; limit?: number }) {

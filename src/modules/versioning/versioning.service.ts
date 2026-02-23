@@ -110,28 +110,28 @@ export class VersioningService {
     const modified: any[] = [];
 
     // Index items by name for comparison
-    const mapA = new Map(itemsA.map((item: any, idx: number) => [item.name, { item, idx }]));
-    const mapB = new Map(itemsB.map((item: any, idx: number) => [item.name, { item, idx }]));
+    const mapA = new Map<string, { item: any; idx: number }>(itemsA.map((item: any, idx: number) => [item.name, { item, idx }]));
+    const mapB = new Map<string, { item: any; idx: number }>(itemsB.map((item: any, idx: number) => [item.name, { item, idx }]));
 
-    for (const [name, { item, idx }] of mapB) {
+    for (const [name, entry] of mapB) {
       if (!mapA.has(name)) {
-        added.push({ index: idx, item });
+        added.push({ index: entry.idx, item: entry.item });
       } else {
         const aItem = mapA.get(name)!.item;
         const changes: any[] = [];
         for (const field of ['description', 'unit', 'quantity', 'unitPrice', 'amount']) {
-          if (aItem[field] !== item[field]) {
-            changes.push({ field, from: aItem[field], to: item[field] });
+          if (aItem[field] !== entry.item[field]) {
+            changes.push({ field, from: aItem[field], to: entry.item[field] });
           }
         }
         if (changes.length > 0) {
-          modified.push({ index: idx, changes });
+          modified.push({ index: entry.idx, changes });
         }
       }
     }
-    for (const [name, { item, idx }] of mapA) {
+    for (const [name, entry] of mapA) {
       if (!mapB.has(name)) {
-        removed.push({ index: idx, item });
+        removed.push({ index: entry.idx, item: entry.item });
       }
     }
 

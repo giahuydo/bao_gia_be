@@ -5,9 +5,11 @@ import { QuotationsService } from './quotations.service';
 import { Quotation } from '../../database/entities/quotation.entity';
 import { QuotationItem } from '../../database/entities/quotation-item.entity';
 import { QuotationHistory } from '../../database/entities/quotation-history.entity';
+import { Customer } from '../../database/entities/customer.entity';
+import { Product } from '../../database/entities/product.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Quotation, QuotationItem, QuotationHistory])],
+  imports: [TypeOrmModule.forFeature([Quotation, QuotationItem, QuotationHistory, Customer, Product])],
   controllers: [QuotationsController],
   providers: [QuotationsService],
   exports: [QuotationsService],

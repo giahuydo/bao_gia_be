@@ -56,8 +56,8 @@ export class JobsService {
     }
     job.status = JobStatus.PENDING;
     job.retries += 1;
-    job.error = null;
-    job.errorStack = null;
+    (job as any).error = null;
+    (job as any).errorStack = null;
     return this.jobsRepository.save(job);
   }
 }

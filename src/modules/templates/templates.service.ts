@@ -13,47 +13,51 @@ export class TemplatesService {
     private templatesRepository: Repository<Template>,
   ) {}
 
-  async create(createDto: CreateTemplateDto, userId: string): Promise<Template> {
+  async create(createDto: CreateTemplateDto, userId: string, organizationId: string): Promise<Template> {
     if (createDto.isDefault) {
-      await this.templatesRepository.update({}, { isDefault: false });
+      await this.templatesRepository.update({ organizationId }, { isDefault: false });
     }
     const template = this.templatesRepository.create({
       ...createDto,
       createdBy: userId,
+      organizationId,
     });
     return this.templatesRepository.save(template);
   }
 
-  async findAll(): Promise<Template[]> {
+  async findAll(organizationId: string): Promise<Template[]> {
     return this.templatesRepository.find({
+      where: { organizationId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string): Promise<Template> {
-    const template = await this.templatesRepository.findOne({ where: { id } });
+  async findOne(id: string, organizationId?: string): Promise<Template> {
+    const where: any = { id };
+    if (organizationId) where.organizationId = organizationId;
+    const template = await this.templatesRepository.findOne({ where });
     if (!template) {
       throw new NotFoundException('Template not found');
     }
     return template;
   }
 
-  async update(id: string, updateDto: UpdateTemplateDto): Promise<Template> {
-    const template = await this.findOne(id);
+  async update(id: string, updateDto: UpdateTemplateDto, organizationId: string): Promise<Template> {
+    const template = await this.findOne(id, organizationId);
     if (updateDto.isDefault) {
-      await this.templatesRepository.update({ id: Not(id) }, { isDefault: false });
+      await this.templatesRepository.update({ organizationId, id: Not(id) }, { isDefault: false });
     }
     Object.assign(template, updateDto);
     return this.templatesRepository.save(template);
   }
 
-  async remove(id: string): Promise<void> {
-    const template = await this.findOne(id);
+  async remove(id: string, organizationId: string): Promise<void> {
+    const template = await this.findOne(id, organizationId);
     await this.templatesRepository.remove(template);
   }
 
-  async apply(id: string, applyDto: ApplyTemplateDto) {
-    const template = await this.findOne(id);
+  async apply(id: string, applyDto: ApplyTemplateDto, organizationId?: string) {
+    const template = await this.findOne(id, organizationId);
 
     return {
       title: applyDto.title || `Bao gia tu template: ${template.name}`,

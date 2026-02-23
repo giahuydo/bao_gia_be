@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as Handlebars from 'handlebars';
@@ -8,10 +9,14 @@ import * as puppeteer from 'puppeteer';
 import { Quotation, QuotationStatus } from '../../database/entities/quotation.entity';
 import { QuotationItem } from '../../database/entities/quotation-item.entity';
 import { QuotationHistory, HistoryAction } from '../../database/entities/quotation-history.entity';
+import { Customer } from '../../database/entities/customer.entity';
+import { Product } from '../../database/entities/product.entity';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationQueryDto } from './dto/quotation-query.dto';
 import { PaginatedResultDto } from '../../shared/dto/pagination.dto';
+import { QuotationStatusChangedEvent } from '../telegram/events/telegram.events';
+import { IDashboardStats } from '../../../../shared/types/dashboard';
 
 @Injectable()
 export class QuotationsService {
@@ -22,10 +27,15 @@ export class QuotationsService {
     private itemsRepository: Repository<QuotationItem>,
     @InjectRepository(QuotationHistory)
     private historyRepository: Repository<QuotationHistory>,
+    @InjectRepository(Customer)
+    private customersRepository: Repository<Customer>,
+    @InjectRepository(Product)
+    private productsRepository: Repository<Product>,
     private dataSource: DataSource,
+    private eventEmitter: EventEmitter2,
   ) {}
 
-  async create(createDto: CreateQuotationDto, userId: string): Promise<Quotation> {
+  async create(createDto: CreateQuotationDto, userId: string, organizationId: string): Promise<Quotation> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -60,6 +70,7 @@ export class QuotationsService {
         total,
         templateId: createDto.templateId,
         createdBy: userId,
+        organizationId,
         items,
       };
       if (createDto.validUntil) {
@@ -87,12 +98,14 @@ export class QuotationsService {
     }
   }
 
-  async findAll(queryDto: QuotationQueryDto): Promise<PaginatedResultDto<Quotation>> {
+  async findAll(queryDto: QuotationQueryDto, organizationId: string): Promise<PaginatedResultDto<Quotation>> {
     const { page, limit, search, status, customerId } = queryDto;
     const qb = this.quotationsRepository.createQueryBuilder('quotation')
       .leftJoinAndSelect('quotation.customer', 'customer')
       .leftJoinAndSelect('quotation.items', 'items')
       .leftJoinAndSelect('quotation.currency', 'currency');
+
+    qb.where('quotation.organizationId = :organizationId', { organizationId });
 
     if (search) {
       qb.andWhere(
@@ -117,9 +130,11 @@ export class QuotationsService {
     return new PaginatedResultDto(data, total, page, limit);
   }
 
-  async findOne(id: string): Promise<Quotation> {
+  async findOne(id: string, organizationId?: string): Promise<Quotation> {
+    const where: any = { id };
+    if (organizationId) where.organizationId = organizationId;
     const quotation = await this.quotationsRepository.findOne({
-      where: { id },
+      where,
       relations: ['customer', 'items', 'createdByUser', 'currency', 'attachments', 'history', 'history.performedByUser'],
       order: { items: { sortOrder: 'ASC' }, history: { createdAt: 'DESC' } },
     });
@@ -195,13 +210,13 @@ export class QuotationsService {
     }
   }
 
-  async remove(id: string): Promise<void> {
-    const quotation = await this.findOne(id);
+  async remove(id: string, organizationId: string): Promise<void> {
+    const quotation = await this.findOne(id, organizationId);
     await this.quotationsRepository.softRemove(quotation);
   }
 
-  async updateStatus(id: string, status: QuotationStatus, userId: string): Promise<Quotation> {
-    const quotation = await this.findOne(id);
+  async updateStatus(id: string, status: QuotationStatus, userId: string, organizationId?: string): Promise<Quotation> {
+    const quotation = await this.findOne(id, organizationId);
     const oldStatus = quotation.status;
     quotation.status = status;
     await this.quotationsRepository.save(quotation);
@@ -214,17 +229,34 @@ export class QuotationsService {
       note: `Status changed from ${oldStatus} to ${status}`,
     });
 
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+
+    this.eventEmitter.emit(
+      'quotation.status_changed',
+      new QuotationStatusChangedEvent(
+        updated.id,
+        updated.quotationNumber,
+        updated.title,
+        oldStatus,
+        status,
+        userId,
+        Number(updated.total),
+        updated.customer?.name,
+      ),
+    );
+
+    return updated;
   }
 
-  async duplicate(id: string, userId: string): Promise<Quotation> {
-    const original = await this.findOne(id);
+  async duplicate(id: string, userId: string, organizationId: string): Promise<Quotation> {
+    const original = await this.findOne(id, organizationId);
     const quotationNumber = await this.generateQuotationNumber();
 
     const newQuotation = this.quotationsRepository.create({
       quotationNumber,
       title: `${original.title} (Copy)`,
       customerId: original.customerId,
+      organizationId,
       status: QuotationStatus.DRAFT,
       validUntil: original.validUntil,
       notes: original.notes,
@@ -319,6 +351,108 @@ export class QuotationsService {
     } finally {
       await browser.close();
     }
+  }
+
+  async getDashboard(organizationId: string): Promise<IDashboardStats> {
+    // --- totalQuotations ---
+    const totalQuotations = await this.quotationsRepository.count({
+      where: { organizationId },
+    });
+
+    // --- statusBreakdown + totalRevenue + acceptedRevenue (single query) ---
+    const revenueRow = await this.quotationsRepository
+      .createQueryBuilder('q')
+      .select('COALESCE(SUM(q.total), 0)', 'totalRevenue')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN q.status = '${QuotationStatus.ACCEPTED}' THEN q.total ELSE 0 END), 0)`,
+        'acceptedRevenue',
+      )
+      .where('q.organizationId = :organizationId', { organizationId })
+      .getRawOne();
+
+    const statusRows: { status: string; count: string }[] = await this.quotationsRepository
+      .createQueryBuilder('q')
+      .select('q.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('q.organizationId = :organizationId', { organizationId })
+      .groupBy('q.status')
+      .getRawMany();
+
+    const statusBreakdown: Record<QuotationStatus, number> = {
+      [QuotationStatus.DRAFT]: 0,
+      [QuotationStatus.SENT]: 0,
+      [QuotationStatus.ACCEPTED]: 0,
+      [QuotationStatus.REJECTED]: 0,
+      [QuotationStatus.EXPIRED]: 0,
+    };
+    for (const row of statusRows) {
+      statusBreakdown[row.status as QuotationStatus] = parseInt(row.count, 10);
+    }
+
+    // --- totalCustomers ---
+    const totalCustomers = await this.customersRepository.count({
+      where: { organizationId },
+    });
+
+    // --- totalProducts ---
+    const totalProducts = await this.productsRepository.count({
+      where: { organizationId },
+    });
+
+    // --- recentQuotations (last 5) ---
+    const recentRows = await this.quotationsRepository
+      .createQueryBuilder('q')
+      .leftJoin('q.customer', 'customer')
+      .select('q.id', 'id')
+      .addSelect('q.quotationNumber', 'quotationNumber')
+      .addSelect('q.title', 'title')
+      .addSelect('customer.name', 'customerName')
+      .addSelect('q.status', 'status')
+      .addSelect('q.total', 'total')
+      .addSelect('q.createdAt', 'createdAt')
+      .where('q.organizationId = :organizationId', { organizationId })
+      .orderBy('q.createdAt', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    const recentQuotations = recentRows.map((row) => ({
+      id: row.id,
+      quotationNumber: row.quotationNumber,
+      title: row.title,
+      customerName: row.customerName ?? '',
+      status: row.status as QuotationStatus,
+      total: parseFloat(row.total) || 0,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    }));
+
+    // --- monthlyTrend (last 6 months) ---
+    const trendRows: { month: string; count: string; total: string }[] = await this.quotationsRepository
+      .createQueryBuilder('q')
+      .select("TO_CHAR(q.createdAt, 'YYYY-MM')", 'month')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('COALESCE(SUM(q.total), 0)', 'total')
+      .where('q.organizationId = :organizationId', { organizationId })
+      .andWhere("q.createdAt >= NOW() - INTERVAL '6 months'")
+      .groupBy("TO_CHAR(q.createdAt, 'YYYY-MM')")
+      .orderBy('month', 'ASC')
+      .getRawMany();
+
+    const monthlyTrend = trendRows.map((row) => ({
+      month: row.month,
+      count: parseInt(row.count, 10),
+      total: parseFloat(row.total) || 0,
+    }));
+
+    return {
+      totalQuotations,
+      statusBreakdown,
+      totalRevenue: parseFloat(revenueRow?.totalRevenue) || 0,
+      acceptedRevenue: parseFloat(revenueRow?.acceptedRevenue) || 0,
+      totalCustomers,
+      totalProducts,
+      recentQuotations,
+      monthlyTrend,
+    };
   }
 
   private async generateQuotationNumber(): Promise<string> {

@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   N8nExecutionLog,
   ExecutionStatus,
@@ -17,6 +18,7 @@ import {
 } from './dto/quotation-processed.dto';
 import { DeliveryCompletedDto } from './dto/delivery-completed.dto';
 import { ExecutionFailedDto } from './dto/execution-failed.dto';
+import { IngestionJobCompletedEvent } from '../telegram/events/telegram.events';
 
 @Injectable()
 export class WebhooksService {
@@ -33,6 +35,7 @@ export class WebhooksService {
     private quotationsRepository: Repository<Quotation>,
     @InjectRepository(IngestionJob)
     private jobsRepository: Repository<IngestionJob>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   private mapProcessingStatus(status: ProcessingStatus): ExecutionStatus {
@@ -115,6 +118,22 @@ export class WebhooksService {
       });
       await this.historyRepository.save(history);
     }
+
+    // Emit event for Telegram notification
+    const eventStatus = dto.status === ProcessingStatus.SUCCESS ? 'completed' : 'failed';
+    const quotation = dto.quotationId
+      ? await this.quotationsRepository.findOne({ where: { id: dto.quotationId } })
+      : null;
+    this.eventEmitter.emit(
+      eventStatus === 'completed' ? 'job.completed' : 'job.failed',
+      new IngestionJobCompletedEvent(
+        dto.executionId,
+        eventStatus,
+        dto.quotationId,
+        quotation?.quotationNumber,
+        dto.error,
+      ),
+    );
 
     return { received: true };
   }
@@ -204,6 +223,17 @@ export class WebhooksService {
         });
         this.logger.log(
           `Job ${jobId} marked as ${newStatus} | retries=${job.retries}/${job.maxRetries}`,
+        );
+
+        this.eventEmitter.emit(
+          'job.failed',
+          new IngestionJobCompletedEvent(
+            jobId,
+            newStatus === JobStatus.DEAD_LETTER ? 'dead_letter' : 'failed',
+            undefined,
+            undefined,
+            dto.error,
+          ),
         );
       }
     }

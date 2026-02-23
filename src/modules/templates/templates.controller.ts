@@ -26,37 +26,37 @@ export class TemplatesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a template' })
-  create(@Body() createDto: CreateTemplateDto, @CurrentUser() user: User) {
-    return this.templatesService.create(createDto, user.id);
+  create(@Body() createDto: CreateTemplateDto, @CurrentUser() user: any) {
+    return this.templatesService.create(createDto, user.id, user.organizationId);
   }
 
   @Get()
   @ApiOperation({ summary: 'List all templates' })
-  findAll() {
-    return this.templatesService.findAll();
+  findAll(@CurrentUser() user: any) {
+    return this.templatesService.findAll(user.organizationId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get template by ID' })
-  findOne(@Param('id') id: string) {
-    return this.templatesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.templatesService.findOne(id, user.organizationId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a template' })
-  update(@Param('id') id: string, @Body() updateDto: UpdateTemplateDto) {
-    return this.templatesService.update(id, updateDto);
+  update(@Param('id') id: string, @Body() updateDto: UpdateTemplateDto, @CurrentUser() user: any) {
+    return this.templatesService.update(id, updateDto, user.organizationId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a template' })
-  remove(@Param('id') id: string) {
-    return this.templatesService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.templatesService.remove(id, user.organizationId);
   }
 
   @Post(':id/apply')
   @ApiOperation({ summary: 'Apply template to generate quotation draft data' })
-  apply(@Param('id') id: string, @Body() applyDto: ApplyTemplateDto) {
-    return this.templatesService.apply(id, applyDto);
+  apply(@Param('id') id: string, @Body() applyDto: ApplyTemplateDto, @CurrentUser() user: any) {
+    return this.templatesService.apply(id, applyDto, user.organizationId);
   }
 }

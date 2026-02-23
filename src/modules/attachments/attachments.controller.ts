@@ -39,21 +39,21 @@ export class AttachmentsController {
       }),
     )
     file: Express.Multer.File,
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
   ) {
-    return this.attachmentsService.upload(file, quotationId, user.id);
+    return this.attachmentsService.upload(file, quotationId, user.id, user.organizationId);
   }
 
   @Get('quotations/:quotationId/attachments')
   @ApiOperation({ summary: 'List attachments for a quotation' })
-  findByQuotation(@Param('quotationId') quotationId: string) {
-    return this.attachmentsService.findByQuotation(quotationId);
+  findByQuotation(@Param('quotationId') quotationId: string, @CurrentUser() user: any) {
+    return this.attachmentsService.findByQuotation(quotationId, user.organizationId);
   }
 
   @Get('attachments/:id/download')
   @ApiOperation({ summary: 'Download an attachment' })
-  async download(@Param('id') id: string, @Res() res: Response) {
-    const fileInfo = await this.attachmentsService.getFilePath(id);
+  async download(@Param('id') id: string, @Res() res: Response, @CurrentUser() user: any) {
+    const fileInfo = await this.attachmentsService.getFilePath(id, user.organizationId);
     res.set({
       'Content-Type': fileInfo.mimeType,
       'Content-Disposition': `attachment; filename="${encodeURIComponent(fileInfo.originalName)}"`,
@@ -64,7 +64,7 @@ export class AttachmentsController {
 
   @Delete('attachments/:id')
   @ApiOperation({ summary: 'Delete an attachment' })
-  remove(@Param('id') id: string) {
-    return this.attachmentsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.attachmentsService.remove(id, user.organizationId);
   }
 }

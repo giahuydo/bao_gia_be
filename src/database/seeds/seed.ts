@@ -72,7 +72,7 @@ async function seed() {
   const userRepo = dataSource.getRepository('User');
   let adminUser = await userRepo.findOne({ where: { email: 'admin@baogia.vn' } });
   if (!adminUser) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('Password123!', 10);
     adminUser = await userRepo.save({
       email: 'admin@baogia.vn',
       password: hashedPassword,
@@ -80,7 +80,7 @@ async function seed() {
       role: 'admin',
       isActive: true,
     });
-    console.log('Admin user seeded (admin@baogia.vn / admin123)');
+    console.log('Admin user seeded (admin@baogia.vn / Password123!)');
   }
 
   // Ensure admin is member of default org

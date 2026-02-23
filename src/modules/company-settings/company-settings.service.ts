@@ -11,20 +11,21 @@ export class CompanySettingsService {
     private settingsRepository: Repository<CompanySettings>,
   ) {}
 
-  async get(): Promise<CompanySettings> {
-    let settings = await this.settingsRepository.findOne({ where: {} });
+  async get(organizationId: string): Promise<CompanySettings> {
+    let settings = await this.settingsRepository.findOne({ where: { organizationId } });
     if (!settings) {
       settings = this.settingsRepository.create({
         companyName: 'My Company',
         quotationPrefix: 'BG',
+        organizationId,
       });
       settings = await this.settingsRepository.save(settings);
     }
     return settings;
   }
 
-  async update(dto: UpdateCompanySettingsDto): Promise<CompanySettings> {
-    const settings = await this.get();
+  async update(dto: UpdateCompanySettingsDto, organizationId: string): Promise<CompanySettings> {
+    const settings = await this.get(organizationId);
     Object.assign(settings, dto);
     return this.settingsRepository.save(settings);
   }

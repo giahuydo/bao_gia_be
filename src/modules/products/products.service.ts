@@ -14,17 +14,20 @@ export class ProductsService {
     private productsRepository: Repository<Product>,
   ) {}
 
-  async create(createDto: CreateProductDto, userId: string): Promise<Product> {
+  async create(createDto: CreateProductDto, userId: string, organizationId: string): Promise<Product> {
     const product = this.productsRepository.create({
       ...createDto,
       createdBy: userId,
+      organizationId,
     });
     return this.productsRepository.save(product);
   }
 
-  async findAll(queryDto: ProductQueryDto): Promise<PaginatedResultDto<Product>> {
+  async findAll(queryDto: ProductQueryDto, organizationId: string): Promise<PaginatedResultDto<Product>> {
     const { page, limit, search, category } = queryDto;
     const qb = this.productsRepository.createQueryBuilder('product');
+
+    qb.where('product.organizationId = :organizationId', { organizationId });
 
     if (search) {
       qb.andWhere('product.name ILIKE :search', { search: `%${search}%` });
@@ -43,9 +46,11 @@ export class ProductsService {
     return new PaginatedResultDto(data, total, page, limit);
   }
 
-  async findOne(id: string): Promise<Product> {
+  async findOne(id: string, organizationId?: string): Promise<Product> {
+    const where: any = { id };
+    if (organizationId) where.organizationId = organizationId;
     const product = await this.productsRepository.findOne({
-      where: { id },
+      where,
     });
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -53,14 +58,14 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: string, updateDto: UpdateProductDto): Promise<Product> {
-    const product = await this.findOne(id);
+  async update(id: string, updateDto: UpdateProductDto, organizationId: string): Promise<Product> {
+    const product = await this.findOne(id, organizationId);
     Object.assign(product, updateDto);
     return this.productsRepository.save(product);
   }
 
-  async remove(id: string): Promise<void> {
-    const product = await this.findOne(id);
+  async remove(id: string, organizationId: string): Promise<void> {
+    const product = await this.findOne(id, organizationId);
     await this.productsRepository.remove(product);
   }
 }
