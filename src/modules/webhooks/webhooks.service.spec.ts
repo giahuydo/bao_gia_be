@@ -15,6 +15,7 @@ describe('WebhooksService', () => {
   let mockHistoryRepo: Record<string, jest.Mock>;
   let mockQuotationsRepo: Record<string, jest.Mock>;
   let mockJobsRepo: Record<string, jest.Mock>;
+  let mockEventEmitter: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     mockExecutionLogRepo = {
@@ -26,11 +27,15 @@ describe('WebhooksService', () => {
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
     mockQuotationsRepo = {
-      findOne: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
     };
     mockJobsRepo = {
-      findOne: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
       save: jest.fn((entity) => Promise.resolve(entity)),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+    mockEventEmitter = {
+      emit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -40,7 +45,7 @@ describe('WebhooksService', () => {
         { provide: getRepositoryToken(QuotationHistory), useValue: mockHistoryRepo },
         { provide: getRepositoryToken(Quotation), useValue: mockQuotationsRepo },
         { provide: getRepositoryToken(IngestionJob), useValue: mockJobsRepo },
-        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 
@@ -49,6 +54,8 @@ describe('WebhooksService', () => {
 
   describe('handleQuotationProcessed', () => {
     it('should log execution and return received', async () => {
+      mockQuotationsRepo.findOne.mockResolvedValue(null);
+
       const result = await service.handleQuotationProcessed({
         executionId: 'exec-1',
         status: ProcessingStatus.SUCCESS,
@@ -61,6 +68,8 @@ describe('WebhooksService', () => {
     });
 
     it('should record history on success with quotationId', async () => {
+      mockQuotationsRepo.findOne.mockResolvedValue(null);
+
       await service.handleQuotationProcessed({
         executionId: 'exec-1',
         status: ProcessingStatus.SUCCESS,
@@ -77,6 +86,8 @@ describe('WebhooksService', () => {
     });
 
     it('should record failure history on failed status', async () => {
+      mockQuotationsRepo.findOne.mockResolvedValue(null);
+
       await service.handleQuotationProcessed({
         executionId: 'exec-2',
         status: ProcessingStatus.FAILED,
@@ -99,6 +110,40 @@ describe('WebhooksService', () => {
       });
 
       expect(mockHistoryRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('should emit job.completed event on success', async () => {
+      mockQuotationsRepo.findOne.mockResolvedValue({
+        id: 'q-1',
+        quotationNumber: 'BG-001',
+      });
+
+      await service.handleQuotationProcessed({
+        executionId: 'exec-4',
+        status: ProcessingStatus.SUCCESS,
+        quotationId: 'q-1',
+      });
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'job.completed',
+        expect.objectContaining({ jobId: 'exec-4', status: 'completed' }),
+      );
+    });
+
+    it('should emit job.failed event on failure', async () => {
+      mockQuotationsRepo.findOne.mockResolvedValue(null);
+
+      await service.handleQuotationProcessed({
+        executionId: 'exec-5',
+        status: ProcessingStatus.FAILED,
+        quotationId: 'q-3',
+        error: 'Timeout',
+      });
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'job.failed',
+        expect.objectContaining({ jobId: 'exec-5', status: 'failed' }),
+      );
     });
   });
 
@@ -161,6 +206,62 @@ describe('WebhooksService', () => {
           status: 'failed',
         }),
       );
+    });
+
+    it('should mark job as dead_letter when retries exhausted', async () => {
+      mockJobsRepo.findOne.mockResolvedValue({
+        id: 'job-1',
+        retries: 3,
+        maxRetries: 3,
+      });
+
+      await service.handleExecutionFailed({
+        workflowName: 'vendor-quotation-ingestion',
+        executionId: 'exec-f2',
+        error: 'Max retries exceeded',
+        inputData: { jobId: 'job-1' },
+      });
+
+      expect(mockJobsRepo.update).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: 'dead_letter' }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'job.failed',
+        expect.objectContaining({ status: 'dead_letter' }),
+      );
+    });
+
+    it('should mark job as failed when retries not exhausted', async () => {
+      mockJobsRepo.findOne.mockResolvedValue({
+        id: 'job-2',
+        retries: 1,
+        maxRetries: 3,
+      });
+
+      await service.handleExecutionFailed({
+        workflowName: 'vendor-quotation-ingestion',
+        executionId: 'exec-f3',
+        error: 'Transient error',
+        inputData: { jobId: 'job-2' },
+      });
+
+      expect(mockJobsRepo.update).toHaveBeenCalledWith(
+        'job-2',
+        expect.objectContaining({ status: 'failed' }),
+      );
+    });
+
+    it('should not update job when no jobId in inputData', async () => {
+      await service.handleExecutionFailed({
+        workflowName: 'vendor-quotation-ingestion',
+        executionId: 'exec-f4',
+        error: 'Generic error',
+        inputData: { correlationId: 'corr-1' },
+      });
+
+      expect(mockJobsRepo.findOne).not.toHaveBeenCalled();
+      expect(mockJobsRepo.update).not.toHaveBeenCalled();
     });
   });
 });

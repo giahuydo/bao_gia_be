@@ -16,7 +16,7 @@ import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationQueryDto } from './dto/quotation-query.dto';
 import { PaginatedResultDto } from '../../shared/dto/pagination.dto';
 import { QuotationStatusChangedEvent } from '../telegram/events/telegram.events';
-import { IDashboardStats } from '../../../../shared/types/dashboard';
+import { IDashboardStats } from '../../shared/types/dashboard';
 
 @Injectable()
 export class QuotationsService {
@@ -354,6 +354,25 @@ export class QuotationsService {
   }
 
   async getDashboard(organizationId: string): Promise<IDashboardStats> {
+    if (!organizationId) {
+      return {
+        totalQuotations: 0,
+        statusBreakdown: {
+          [QuotationStatus.DRAFT]: 0,
+          [QuotationStatus.SENT]: 0,
+          [QuotationStatus.ACCEPTED]: 0,
+          [QuotationStatus.REJECTED]: 0,
+          [QuotationStatus.EXPIRED]: 0,
+        },
+        totalRevenue: 0,
+        acceptedRevenue: 0,
+        totalCustomers: 0,
+        totalProducts: 0,
+        recentQuotations: [],
+        monthlyTrend: [],
+      };
+    }
+
     // --- totalQuotations ---
     const totalQuotations = await this.quotationsRepository.count({
       where: { organizationId },
