@@ -51,8 +51,8 @@ export class PriceMonitoringJob {
   })
   triggerType: PriceMonitoringTriggerType;
 
-  @Column({ name: 'triggered_by', nullable: true })
-  triggeredBy: string | null;
+  @Column({ name: 'triggered_by', type: 'varchar', nullable: true })
+  triggeredBy: string;
 
   @Column({ name: 'total_products', type: 'int', default: 0 })
   totalProducts: number;
@@ -63,17 +63,17 @@ export class PriceMonitoringJob {
   @Column({ name: 'alert_count', type: 'int', default: 0 })
   alertCount: number;
 
-  @Column({ name: 'n8n_execution_id', nullable: true })
-  n8nExecutionId: string | null;
+  @Column({ name: 'n8n_execution_id', type: 'varchar', nullable: true })
+  n8nExecutionId: string;
 
   @Column({ type: 'text', nullable: true })
-  error: string | null;
+  error: string;
 
   @Column({ name: 'started_at', type: 'timestamp', nullable: true })
-  startedAt: Date | null;
+  startedAt: Date;
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
-  completedAt: Date | null;
+  completedAt: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

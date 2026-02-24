@@ -53,11 +53,15 @@ export class PriceMonitoringService {
 
     if (triggerResult.success) {
       savedJob.status = PriceMonitoringJobStatus.RUNNING;
-      savedJob.n8nExecutionId = triggerResult.executionId ?? null;
+      if (triggerResult.executionId) {
+        savedJob.n8nExecutionId = triggerResult.executionId;
+      }
       savedJob.startedAt = new Date();
     } else {
       savedJob.status = PriceMonitoringJobStatus.FAILED;
-      savedJob.error = triggerResult.error ?? null;
+      if (triggerResult.error) {
+        savedJob.error = triggerResult.error;
+      }
       this.logger.error(`Failed to trigger price monitoring job ${savedJob.id}: ${triggerResult.error}`);
     }
 
