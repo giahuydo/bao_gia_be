@@ -65,9 +65,10 @@ export class AuthService {
   }
 
   private async generateToken(user: User): Promise<string> {
-    // Find user's default organization (first active membership)
+    // Find user's default organization (earliest active membership)
     const membership = await this.orgMemberRepository.findOne({
       where: { userId: user.id, isActive: true },
+      order: { createdAt: 'ASC' },
     });
     const payload: Record<string, any> = {
       sub: user.id,
