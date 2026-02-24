@@ -986,7 +986,7 @@ describe('IngestionService', () => {
         ORG_ID,
       );
 
-      expect(result.title).toContain('nha cung cap');
+      expect(result.title).toContain('vendor');
     });
 
     it('should save to checksum cache when org and job with checksum exist', async () => {

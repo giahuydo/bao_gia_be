@@ -131,7 +131,7 @@ describe('TemplatesService', () => {
         defaultTax: 10,
         defaultDiscount: 5,
         isDefault: false,
-        items: [{ name: 'Item A', unit: 'goi', quantity: 2, unitPrice: 5000000 }],
+        items: [{ name: 'Item A', unit: 'package', quantity: 2, unitPrice: 5000000 }],
       };
 
       await service.create(createDto, USER_ID, ORG_ID);

@@ -79,7 +79,7 @@ function makeQuotation(overrides: Partial<Quotation> = {}): Quotation {
         productId: null,
         name: 'Website Design',
         description: 'UI/UX',
-        unit: 'goi',
+        unit: 'package',
         quantity: 1,
         unitPrice: 1000000,
         amount: 1000000,

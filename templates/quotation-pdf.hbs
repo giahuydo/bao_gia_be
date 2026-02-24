@@ -216,17 +216,17 @@
       {{#if companySettings}}
       <p class="company-name">{{companySettings.companyName}}</p>
       {{#if companySettings.address}}<p class="company-detail">{{companySettings.address}}</p>{{/if}}
-      {{#if companySettings.phone}}<p class="company-detail">SĐT: {{companySettings.phone}}</p>{{/if}}
+      {{#if companySettings.phone}}<p class="company-detail">Phone: {{companySettings.phone}}</p>{{/if}}
       {{#if companySettings.email}}<p class="company-detail">Email: {{companySettings.email}}</p>{{/if}}
-      {{#if companySettings.taxCode}}<p class="company-detail">MST: {{companySettings.taxCode}}</p>{{/if}}
+      {{#if companySettings.taxCode}}<p class="company-detail">Tax ID: {{companySettings.taxCode}}</p>{{/if}}
       {{else}}
-      <p class="company-name">Bao Gia Management</p>
+      <p class="company-name">Quotation Management</p>
       {{/if}}
     </div>
     <div class="quotation-badge">
-      <h1>BÁO GIÁ</h1>
+      <h1>QUOTATION</h1>
       <div class="quotation-number">{{quotationNumber}}</div>
-      <div class="quotation-date">Ngày: {{formatDate createdAt}}</div>
+      <div class="quotation-date">Date: {{formatDate createdAt}}</div>
     </div>
   </div>
 
@@ -238,20 +238,20 @@
   <!-- Customer + Quotation info -->
   <div class="info-row">
     <div class="info-block">
-      <h3>Khách hàng</h3>
+      <h3>Customer</h3>
       <p class="name">{{customer.name}}</p>
-      {{#if customer.contactPerson}}<p>Người liên hệ: {{customer.contactPerson}}</p>{{/if}}
+      {{#if customer.contactPerson}}<p>Contact: {{customer.contactPerson}}</p>{{/if}}
       {{#if customer.email}}<p>Email: {{customer.email}}</p>{{/if}}
-      {{#if customer.phone}}<p>SĐT: {{customer.phone}}</p>{{/if}}
-      {{#if customer.address}}<p>Địa chỉ: {{customer.address}}</p>{{/if}}
-      {{#if customer.taxCode}}<p>MST: {{customer.taxCode}}</p>{{/if}}
+      {{#if customer.phone}}<p>Phone: {{customer.phone}}</p>{{/if}}
+      {{#if customer.address}}<p>Address: {{customer.address}}</p>{{/if}}
+      {{#if customer.taxCode}}<p>Tax ID: {{customer.taxCode}}</p>{{/if}}
     </div>
     <div class="info-block">
-      <h3>Thông tin báo giá</h3>
-      <p>Ngày tạo: {{formatDate createdAt}}</p>
-      {{#if validUntil}}<p>Hiệu lực đến: {{formatDate validUntil}}</p>{{/if}}
-      <p>Trạng thái: {{statusLabel}}</p>
-      {{#if currency}}<p>Tiền tệ: {{currency.code}}</p>{{/if}}
+      <h3>Quotation Details</h3>
+      <p>Created: {{formatDate createdAt}}</p>
+      {{#if validUntil}}<p>Valid until: {{formatDate validUntil}}</p>{{/if}}
+      <p>Status: {{statusLabel}}</p>
+      {{#if currency}}<p>Currency: {{currency.code}}</p>{{/if}}
     </div>
   </div>
 
@@ -259,12 +259,12 @@
   <table class="items">
     <thead>
       <tr>
-        <th style="width: 5%">STT</th>
-        <th style="width: 33%">Tên hàng mục</th>
-        <th style="width: 8%">ĐVT</th>
-        <th style="width: 10%" class="amount">Số lượng</th>
-        <th style="width: 22%" class="amount">Đơn giá</th>
-        <th style="width: 22%" class="amount">Thành tiền</th>
+        <th style="width: 5%">#</th>
+        <th style="width: 33%">Item</th>
+        <th style="width: 8%">Unit</th>
+        <th style="width: 10%" class="amount">Qty</th>
+        <th style="width: 22%" class="amount">Unit Price</th>
+        <th style="width: 22%" class="amount">Amount</th>
       </tr>
     </thead>
     <tbody>
@@ -289,23 +289,23 @@
     <div class="totals">
       <table>
         <tr>
-          <td>Tạm tính:</td>
+          <td>Subtotal:</td>
           <td class="amount">{{formatCurrency subtotal}}</td>
         </tr>
         {{#if discount}}
         <tr>
-          <td>Giảm giá ({{discount}}%):</td>
+          <td>Discount ({{discount}}%):</td>
           <td class="amount">-{{formatCurrency discountAmount}}</td>
         </tr>
         {{/if}}
         {{#if tax}}
         <tr>
-          <td>Thuế ({{tax}}%):</td>
+          <td>Tax ({{tax}}%):</td>
           <td class="amount">{{formatCurrency taxAmount}}</td>
         </tr>
         {{/if}}
         <tr class="total-row">
-          <td>TỔNG CỘNG:</td>
+          <td>TOTAL:</td>
           <td class="amount">{{formatCurrency total}}</td>
         </tr>
       </table>
@@ -315,7 +315,7 @@
   <!-- Notes -->
   {{#if notes}}
   <div class="section">
-    <h3>Ghi chú</h3>
+    <h3>Notes</h3>
     <p>{{notes}}</p>
   </div>
   {{/if}}
@@ -323,7 +323,7 @@
   <!-- Terms -->
   {{#if terms}}
   <div class="section">
-    <h3>Điều khoản</h3>
+    <h3>Terms & Conditions</h3>
     <p>{{terms}}</p>
   </div>
   {{/if}}
@@ -331,30 +331,30 @@
   <!-- Bank info -->
   {{#if companySettings.bankAccount}}
   <div class="bank-info">
-    <h3>Thông tin thanh toán</h3>
-    <p><strong>Ngân hàng:</strong> {{companySettings.bankName}}</p>
-    <p><strong>Số tài khoản:</strong> {{companySettings.bankAccount}}</p>
-    {{#if companySettings.bankBranch}}<p><strong>Chi nhánh:</strong> {{companySettings.bankBranch}}</p>{{/if}}
-    <p><strong>Chủ tài khoản:</strong> {{companySettings.companyName}}</p>
+    <h3>Payment Information</h3>
+    <p><strong>Bank:</strong> {{companySettings.bankName}}</p>
+    <p><strong>Account Number:</strong> {{companySettings.bankAccount}}</p>
+    {{#if companySettings.bankBranch}}<p><strong>Branch:</strong> {{companySettings.bankBranch}}</p>{{/if}}
+    <p><strong>Account Holder:</strong> {{companySettings.companyName}}</p>
   </div>
   {{/if}}
 
   <!-- Signatures -->
   <div class="signatures">
     <div class="sig-block">
-      <div class="label">Đại diện bên mua</div>
+      <div class="label">Buyer Representative</div>
       <div class="line"></div>
-      <div class="hint">(Ký, ghi rõ họ tên)</div>
+      <div class="hint">(Signature & full name)</div>
     </div>
     <div class="sig-block">
-      <div class="label">Đại diện bên bán</div>
+      <div class="label">Seller Representative</div>
       <div class="line"></div>
-      <div class="hint">(Ký, ghi rõ họ tên, đóng dấu)</div>
+      <div class="hint">(Signature, full name & stamp)</div>
     </div>
   </div>
 
   <div class="footer">
-    <p>Báo giá được tạo tự động bởi hệ thống Bao Gia Management</p>
+    <p>This quotation was automatically generated by the Quotation Management System</p>
   </div>
 </body>
 </html>

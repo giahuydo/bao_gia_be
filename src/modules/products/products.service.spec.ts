@@ -14,9 +14,9 @@ const PRODUCT_ID = 'product-uuid-1';
 const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   id: PRODUCT_ID,
   organizationId: ORG_ID,
-  name: 'Thiet ke website',
-  description: 'Thiet ke website responsive, SEO friendly',
-  unit: 'goi',
+  name: 'Website Design',
+  description: 'Responsive website design, SEO friendly',
+  unit: 'package',
   defaultPrice: 15000000,
   category: 'Web Development',
   isActive: true,
@@ -63,8 +63,8 @@ describe('ProductsService', () => {
   describe('create', () => {
     it('should create a product with the given organizationId and userId', async () => {
       const createDto: CreateProductDto = {
-        name: 'Thiet ke website',
-        unit: 'goi',
+        name: 'Website Design',
+        unit: 'package',
         defaultPrice: 15000000,
       };
 

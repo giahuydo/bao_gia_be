@@ -14,12 +14,12 @@ const CUSTOMER_ID = 'customer-uuid-1';
 const makeCustomer = (overrides: Partial<Customer> = {}): Customer => ({
   id: CUSTOMER_ID,
   organizationId: ORG_ID,
-  name: 'Cong ty ABC',
+  name: 'ABC Company',
   email: 'contact@abc.com',
   phone: '0901234567',
-  address: '123 Nguyen Hue, Q1, HCM',
+  address: '123 Main Street, District 1, HCMC',
   taxCode: '0123456789',
-  contactPerson: 'Nguyen Van A',
+  contactPerson: 'John Smith',
   notes: 'VIP customer',
   createdBy: USER_ID,
   createdAt: new Date('2024-01-01'),
@@ -65,7 +65,7 @@ describe('CustomersService', () => {
   describe('create', () => {
     it('should create a customer with the given organizationId and userId', async () => {
       const createDto: CreateCustomerDto = {
-        name: 'Cong ty ABC',
+        name: 'ABC Company',
         email: 'contact@abc.com',
         phone: '0901234567',
       };
@@ -83,8 +83,8 @@ describe('CustomersService', () => {
     });
 
     it('should return the saved customer entity', async () => {
-      const createDto: CreateCustomerDto = { name: 'Cong ty XYZ' };
-      const savedCustomer = makeCustomer({ name: 'Cong ty XYZ' });
+      const createDto: CreateCustomerDto = { name: 'XYZ Company' };
+      const savedCustomer = makeCustomer({ name: 'XYZ Company' });
       mockRepo.save.mockResolvedValue(savedCustomer);
 
       const result = await service.create(createDto, USER_ID, ORG_ID);
@@ -129,7 +129,7 @@ describe('CustomersService', () => {
     });
 
     it('should return a PaginatedResultDto with data and total', async () => {
-      const customers = [makeCustomer(), makeCustomer({ id: 'customer-uuid-2', name: 'Cong ty DEF' })];
+      const customers = [makeCustomer(), makeCustomer({ id: 'customer-uuid-2', name: 'DEF Company' })];
       mockQueryBuilder.getManyAndCount.mockResolvedValue([customers, 2]);
 
       const pagination: PaginationDto = { page: 1, limit: 20 };
