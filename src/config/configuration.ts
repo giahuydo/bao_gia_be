@@ -29,6 +29,13 @@ export default () => ({
     enabled: !!process.env.TELEGRAM_BOT_TOKEN,
     orgId: process.env.TELEGRAM_ORG_ID || '00000000-0000-0000-0000-000000000001',
   },
+  smtp: {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM || 'noreply@baogia.vn',
+  },
   // AES-256-GCM key for encrypting org-level secrets (hex-encoded, 32 bytes)
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 });

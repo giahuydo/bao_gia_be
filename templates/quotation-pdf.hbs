@@ -3,63 +3,268 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 40px; color: #333; }
-    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
-    .header h1 { color: #2563eb; margin: 0; font-size: 28px; }
-    .header .quotation-number { color: #666; font-size: 14px; margin-top: 5px; }
-    .info-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
-    .info-block { width: 48%; }
-    .info-block h3 { color: #2563eb; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-    .info-block p { margin: 4px 0; font-size: 14px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    th { background-color: #2563eb; color: white; padding: 10px 8px; text-align: left; font-size: 13px; }
-    td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
-    tr:nth-child(even) { background-color: #f8f9fa; }
-    .totals { float: right; width: 300px; }
-    .totals table { margin-top: 0; }
-    .totals td { border: none; padding: 5px 8px; }
-    .totals .total-row { font-weight: bold; font-size: 16px; color: #2563eb; border-top: 2px solid #2563eb; }
-    .notes { margin-top: 30px; clear: both; }
-    .notes h3 { color: #2563eb; }
-    .notes p { font-size: 13px; white-space: pre-wrap; }
-    .footer { margin-top: 40px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #ddd; padding-top: 10px; }
-    .amount { text-align: right; }
+    @page { margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 30px 40px;
+      color: #1a1a1a;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Header with company info */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #1e40af;
+      margin-bottom: 25px;
+    }
+    .company-info { max-width: 55%; }
+    .company-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e40af;
+      margin: 0 0 4px 0;
+    }
+    .company-detail {
+      font-size: 12px;
+      color: #555;
+      margin: 2px 0;
+    }
+    .quotation-badge {
+      text-align: right;
+    }
+    .quotation-badge h1 {
+      font-size: 26px;
+      color: #1e40af;
+      margin: 0;
+      letter-spacing: 2px;
+    }
+    .quotation-number {
+      font-size: 14px;
+      color: #666;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .quotation-date {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* Info sections */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 25px;
+      gap: 20px;
+    }
+    .info-block {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 14px 16px;
+      border-left: 3px solid #1e40af;
+    }
+    .info-block h3 {
+      color: #1e40af;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 0 0 8px 0;
+    }
+    .info-block p {
+      margin: 3px 0;
+      font-size: 12px;
+    }
+    .info-block .name {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a1a1a;
+    }
+
+    /* Items table */
+    table.items {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    table.items th {
+      background: #1e40af;
+      color: #fff;
+      padding: 10px 8px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    table.items th.amount { text-align: right; }
+    table.items td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 12px;
+      vertical-align: top;
+    }
+    table.items tr:nth-child(even) { background: #f9fafb; }
+    table.items td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+    table.items .item-desc {
+      color: #666;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    /* Totals */
+    .totals-wrapper { display: flex; justify-content: flex-end; margin-bottom: 25px; }
+    .totals {
+      width: 300px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .totals table { width: 100%; border-collapse: collapse; }
+    .totals td {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .totals td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+    .totals .total-row {
+      background: #1e40af;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .totals .total-row td { border-bottom: none; padding: 10px 12px; }
+
+    /* Notes and terms */
+    .section { margin-bottom: 20px; }
+    .section h3 {
+      color: #1e40af;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 6px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .section p { font-size: 12px; white-space: pre-wrap; color: #444; }
+
+    /* Bank info */
+    .bank-info {
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+    .bank-info h3 {
+      color: #1e40af;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 8px 0;
+    }
+    .bank-info p { margin: 3px 0; font-size: 12px; }
+
+    /* Signature area */
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      padding-top: 20px;
+    }
+    .sig-block {
+      width: 40%;
+      text-align: center;
+    }
+    .sig-block .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e40af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sig-block .line {
+      border-bottom: 1px solid #333;
+      margin-top: 60px;
+      margin-bottom: 4px;
+    }
+    .sig-block .hint {
+      font-size: 10px;
+      color: #999;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      color: #aaa;
+      font-size: 10px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+    }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
-    <h1>BAO GIA</h1>
-    <div class="quotation-number">{{quotationNumber}}</div>
-    <p style="font-size: 18px; margin-top: 10px;">{{title}}</p>
+    <div class="company-info">
+      {{#if companySettings}}
+      <p class="company-name">{{companySettings.companyName}}</p>
+      {{#if companySettings.address}}<p class="company-detail">{{companySettings.address}}</p>{{/if}}
+      {{#if companySettings.phone}}<p class="company-detail">SĐT: {{companySettings.phone}}</p>{{/if}}
+      {{#if companySettings.email}}<p class="company-detail">Email: {{companySettings.email}}</p>{{/if}}
+      {{#if companySettings.taxCode}}<p class="company-detail">MST: {{companySettings.taxCode}}</p>{{/if}}
+      {{else}}
+      <p class="company-name">Bao Gia Management</p>
+      {{/if}}
+    </div>
+    <div class="quotation-badge">
+      <h1>BÁO GIÁ</h1>
+      <div class="quotation-number">{{quotationNumber}}</div>
+      <div class="quotation-date">Ngày: {{formatDate createdAt}}</div>
+    </div>
   </div>
 
-  <div class="info-section">
+  <!-- Title -->
+  <p style="font-size: 16px; font-weight: 600; text-align: center; margin-bottom: 20px; color: #333;">
+    {{title}}
+  </p>
+
+  <!-- Customer + Quotation info -->
+  <div class="info-row">
     <div class="info-block">
-      <h3>Khach hang</h3>
-      <p><strong>{{customer.name}}</strong></p>
-      {{#if customer.contactPerson}}<p>Nguoi lien he: {{customer.contactPerson}}</p>{{/if}}
+      <h3>Khách hàng</h3>
+      <p class="name">{{customer.name}}</p>
+      {{#if customer.contactPerson}}<p>Người liên hệ: {{customer.contactPerson}}</p>{{/if}}
       {{#if customer.email}}<p>Email: {{customer.email}}</p>{{/if}}
-      {{#if customer.phone}}<p>SDT: {{customer.phone}}</p>{{/if}}
-      {{#if customer.address}}<p>Dia chi: {{customer.address}}</p>{{/if}}
+      {{#if customer.phone}}<p>SĐT: {{customer.phone}}</p>{{/if}}
+      {{#if customer.address}}<p>Địa chỉ: {{customer.address}}</p>{{/if}}
       {{#if customer.taxCode}}<p>MST: {{customer.taxCode}}</p>{{/if}}
     </div>
     <div class="info-block">
-      <h3>Thong tin bao gia</h3>
-      <p>Ngay tao: {{formatDate createdAt}}</p>
-      {{#if validUntil}}<p>Hieu luc den: {{formatDate validUntil}}</p>{{/if}}
-      <p>Trang thai: {{status}}</p>
+      <h3>Thông tin báo giá</h3>
+      <p>Ngày tạo: {{formatDate createdAt}}</p>
+      {{#if validUntil}}<p>Hiệu lực đến: {{formatDate validUntil}}</p>{{/if}}
+      <p>Trạng thái: {{statusLabel}}</p>
+      {{#if currency}}<p>Tiền tệ: {{currency.code}}</p>{{/if}}
     </div>
   </div>
 
-  <table>
+  <!-- Items table -->
+  <table class="items">
     <thead>
       <tr>
-        <th style="width: 5%">#</th>
-        <th style="width: 35%">Ten hang muc</th>
-        <th style="width: 10%">DVT</th>
-        <th style="width: 10%" class="amount">SL</th>
-        <th style="width: 20%" class="amount">Don gia</th>
-        <th style="width: 20%" class="amount">Thanh tien</th>
+        <th style="width: 5%">STT</th>
+        <th style="width: 33%">Tên hàng mục</th>
+        <th style="width: 8%">ĐVT</th>
+        <th style="width: 10%" class="amount">Số lượng</th>
+        <th style="width: 22%" class="amount">Đơn giá</th>
+        <th style="width: 22%" class="amount">Thành tiền</th>
       </tr>
     </thead>
     <tbody>
@@ -68,7 +273,7 @@
         <td>{{add @index 1}}</td>
         <td>
           {{this.name}}
-          {{#if this.description}}<br><small style="color: #666">{{this.description}}</small>{{/if}}
+          {{#if this.description}}<div class="item-desc">{{this.description}}</div>{{/if}}
         </td>
         <td>{{this.unit}}</td>
         <td class="amount">{{formatNumber this.quantity}}</td>
@@ -79,47 +284,77 @@
     </tbody>
   </table>
 
-  <div class="totals">
-    <table>
-      <tr>
-        <td>Tam tinh:</td>
-        <td class="amount">{{formatCurrency subtotal}}</td>
-      </tr>
-      {{#if discount}}
-      <tr>
-        <td>Giam gia ({{discount}}%):</td>
-        <td class="amount">-{{formatCurrency discountAmount}}</td>
-      </tr>
-      {{/if}}
-      {{#if tax}}
-      <tr>
-        <td>Thue ({{tax}}%):</td>
-        <td class="amount">{{formatCurrency taxAmount}}</td>
-      </tr>
-      {{/if}}
-      <tr class="total-row">
-        <td>TONG CONG:</td>
-        <td class="amount">{{formatCurrency total}}</td>
-      </tr>
-    </table>
+  <!-- Totals -->
+  <div class="totals-wrapper">
+    <div class="totals">
+      <table>
+        <tr>
+          <td>Tạm tính:</td>
+          <td class="amount">{{formatCurrency subtotal}}</td>
+        </tr>
+        {{#if discount}}
+        <tr>
+          <td>Giảm giá ({{discount}}%):</td>
+          <td class="amount">-{{formatCurrency discountAmount}}</td>
+        </tr>
+        {{/if}}
+        {{#if tax}}
+        <tr>
+          <td>Thuế ({{tax}}%):</td>
+          <td class="amount">{{formatCurrency taxAmount}}</td>
+        </tr>
+        {{/if}}
+        <tr class="total-row">
+          <td>TỔNG CỘNG:</td>
+          <td class="amount">{{formatCurrency total}}</td>
+        </tr>
+      </table>
+    </div>
   </div>
 
+  <!-- Notes -->
   {{#if notes}}
-  <div class="notes">
-    <h3>Ghi chu</h3>
+  <div class="section">
+    <h3>Ghi chú</h3>
     <p>{{notes}}</p>
   </div>
   {{/if}}
 
+  <!-- Terms -->
   {{#if terms}}
-  <div class="notes">
-    <h3>Dieu khoan</h3>
+  <div class="section">
+    <h3>Điều khoản</h3>
     <p>{{terms}}</p>
   </div>
   {{/if}}
 
+  <!-- Bank info -->
+  {{#if companySettings.bankAccount}}
+  <div class="bank-info">
+    <h3>Thông tin thanh toán</h3>
+    <p><strong>Ngân hàng:</strong> {{companySettings.bankName}}</p>
+    <p><strong>Số tài khoản:</strong> {{companySettings.bankAccount}}</p>
+    {{#if companySettings.bankBranch}}<p><strong>Chi nhánh:</strong> {{companySettings.bankBranch}}</p>{{/if}}
+    <p><strong>Chủ tài khoản:</strong> {{companySettings.companyName}}</p>
+  </div>
+  {{/if}}
+
+  <!-- Signatures -->
+  <div class="signatures">
+    <div class="sig-block">
+      <div class="label">Đại diện bên mua</div>
+      <div class="line"></div>
+      <div class="hint">(Ký, ghi rõ họ tên)</div>
+    </div>
+    <div class="sig-block">
+      <div class="label">Đại diện bên bán</div>
+      <div class="line"></div>
+      <div class="hint">(Ký, ghi rõ họ tên, đóng dấu)</div>
+    </div>
+  </div>
+
   <div class="footer">
-    <p>Bao gia nay duoc tao tu dong boi he thong Bao Gia Management</p>
+    <p>Báo giá được tạo tự động bởi hệ thống Bao Gia Management</p>
   </div>
 </body>
 </html>

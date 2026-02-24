@@ -9,16 +9,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class TranslatedItemDto {
-  @ApiProperty({ example: 'May ly tam Model X200' })
+  @ApiProperty({ example: 'Centrifuge Model X200' })
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'May ly tam toc do cao cho phong xet nghiem' })
+  @ApiPropertyOptional({ example: 'High-speed centrifuge for laboratory use' })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'cai' })
+  @ApiProperty({ example: 'unit' })
   @IsString()
   unit: string;
 
@@ -37,12 +37,12 @@ export class TranslatedItemDto {
 }
 
 export class TranslatedDataDto {
-  @ApiPropertyOptional({ example: 'Bao gia nha cung cap #VQ-2026-001' })
+  @ApiPropertyOptional({ example: 'Vendor quotation #VQ-2026-001' })
   @IsOptional()
   @IsString()
   title?: string;
 
-  @ApiPropertyOptional({ example: 'Cong ty TNHH ABC Medical Supplies' })
+  @ApiPropertyOptional({ example: 'ABC Medical Supplies Co., Ltd.' })
   @IsOptional()
   @IsString()
   vendorName?: string;

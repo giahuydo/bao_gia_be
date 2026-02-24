@@ -14,7 +14,7 @@ import { Type } from 'class-transformer';
 import { CreateQuotationItemDto } from './create-quotation-item.dto';
 
 export class CreateQuotationDto {
-  @ApiProperty({ example: 'Bao gia thiet ke website cho cong ty ABC' })
+  @ApiProperty({ example: 'Website design quotation for ABC Company' })
   @IsString()
   title: string;
 

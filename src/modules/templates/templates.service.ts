@@ -60,7 +60,7 @@ export class TemplatesService {
     const template = await this.findOne(id, organizationId);
 
     return {
-      title: applyDto.title || `Bao gia tu template: ${template.name}`,
+      title: applyDto.title || `Quotation from template: ${template.name}`,
       customerId: applyDto.customerId || null,
       terms: template.defaultTerms,
       notes: template.defaultNotes,

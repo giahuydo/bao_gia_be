@@ -370,9 +370,9 @@ Rules:
   }
 
   // ---------------------------------------------------------------------------
-  // Step 2: Translate extracted data to Vietnamese (with glossary injection)
+  // Step 2: Translate extracted data to English (with glossary injection)
   // ---------------------------------------------------------------------------
-  async translateToVietnamese(
+  async translateToEnglish(
     extractedData: {
       title?: string;
       vendorName?: string;
@@ -409,7 +409,7 @@ Rules:
     await this.updateJobStatus(jobId, JobStatus.TRANSLATING);
 
     this.logger.log(
-      `Translating ${extractedData.items.length} items to Vietnamese | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
+      `Translating ${extractedData.items.length} items to English | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
     // Load glossary for organization
@@ -423,7 +423,7 @@ Rules:
     const model = promptVersion?.model || 'claude-sonnet-4-20250514';
     const maxTokens = promptVersion?.maxTokens || 8192;
     const systemPrompt = (promptVersion?.systemPrompt || `You are a professional translator specializing in laboratory and medical equipment terminology.
-Translate the given quotation data from its original language to Vietnamese.
+Translate the given quotation data from its original language to English.
 
 Return ONLY valid JSON in the same structure as the input:
 {
@@ -431,9 +431,9 @@ Return ONLY valid JSON in the same structure as the input:
   "vendorName": "Translated or kept vendor name",
   "items": [
     {
-      "name": "Vietnamese product name",
-      "description": "Vietnamese description with technical specs preserved",
-      "unit": "Vietnamese unit (cai, bo, hop, chiec, etc.)",
+      "name": "English product name",
+      "description": "English description with technical specs preserved",
+      "unit": "English unit (unit, set, box, piece, etc.)",
       "quantity": 1,
       "unitPrice": 15000.00,
       "currency": "USD"
@@ -444,12 +444,12 @@ Return ONLY valid JSON in the same structure as the input:
 }
 
 Rules:
-- Translate product names to Vietnamese but keep model numbers/codes intact
+- Translate product names to English but keep model numbers/codes intact
 - Keep technical specifications (dimensions, power, etc.) in original format
-- Translate units to Vietnamese equivalents (unit→cai, set→bo, box→hop, piece→chiec)
+- Use standard English units of measure (unit, set, box, piece, etc.)
 - Do NOT change numeric values (quantity, unitPrice)
 - Do NOT change currency codes
-- If text is already in Vietnamese, keep it as-is
+- If text is already in English, keep it as-is
 - Keep brand names untranslated`) + glossarySection;
 
     const response = await this.client.messages.create({
@@ -459,7 +459,7 @@ Rules:
       messages: [
         {
           role: 'user',
-          content: `Translate this quotation data to Vietnamese:\n\n${JSON.stringify(extractedData, null, 2)}`,
+          content: `Translate this quotation data to English:\n\n${JSON.stringify(extractedData, null, 2)}`,
         },
       ],
     });
@@ -630,7 +630,7 @@ Rules:
           productId,
           name: item.name,
           description: item.description || '',
-          unit: item.unit || 'cai',
+          unit: item.unit || 'unit',
           quantity: isNaN(quantity) || quantity <= 0 ? 1 : quantity,
           unitPrice: isNaN(unitPrice) || unitPrice < 0 ? 0 : unitPrice,
           matchConfidence,
@@ -641,7 +641,7 @@ Rules:
 
     const title =
       translatedData.title ||
-      `Bao gia tu ${translatedData.vendorName || 'nha cung cap'}`;
+      `Quotation from ${translatedData.vendorName || 'vendor'}`;
 
     const result = {
       title,

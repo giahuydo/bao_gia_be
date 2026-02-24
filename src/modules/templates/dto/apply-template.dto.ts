@@ -7,7 +7,7 @@ export class ApplyTemplateDto {
   @IsUUID()
   customerId?: string;
 
-  @ApiPropertyOptional({ example: 'Bao gia du an moi' })
+  @ApiPropertyOptional({ example: 'New project quotation' })
   @IsOptional()
   @IsString()
   title?: string;

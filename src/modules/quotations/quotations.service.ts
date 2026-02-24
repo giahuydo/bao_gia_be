@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -11,15 +11,20 @@ import { QuotationItem } from '../../database/entities/quotation-item.entity';
 import { QuotationHistory, HistoryAction } from '../../database/entities/quotation-history.entity';
 import { Customer } from '../../database/entities/customer.entity';
 import { Product } from '../../database/entities/product.entity';
+import { CompanySettings } from '../../database/entities/company-settings.entity';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationQueryDto } from './dto/quotation-query.dto';
 import { PaginatedResultDto } from '../../shared/dto/pagination.dto';
 import { QuotationStatusChangedEvent } from '../telegram/events/telegram.events';
 import { IDashboardStats } from '../../shared/types/dashboard';
+import { EmailService } from '../email/email.service';
+import { SendEmailDto } from './dto/send-email.dto';
 
 @Injectable()
 export class QuotationsService {
+  private readonly logger = new Logger(QuotationsService.name);
+
   constructor(
     @InjectRepository(Quotation)
     private quotationsRepository: Repository<Quotation>,
@@ -31,8 +36,11 @@ export class QuotationsService {
     private customersRepository: Repository<Customer>,
     @InjectRepository(Product)
     private productsRepository: Repository<Product>,
+    @InjectRepository(CompanySettings)
+    private companySettingsRepository: Repository<CompanySettings>,
     private dataSource: DataSource,
     private eventEmitter: EventEmitter2,
+    private emailService: EmailService,
   ) {}
 
   async create(createDto: CreateQuotationDto, userId: string, organizationId: string): Promise<Quotation> {
@@ -99,7 +107,7 @@ export class QuotationsService {
   }
 
   async findAll(queryDto: QuotationQueryDto, organizationId: string): Promise<PaginatedResultDto<Quotation>> {
-    const { page, limit, search, status, customerId } = queryDto;
+    const { page, limit, search, status, customerId, dateFrom, dateTo, minTotal, maxTotal } = queryDto;
     const qb = this.quotationsRepository.createQueryBuilder('quotation')
       .leftJoinAndSelect('quotation.customer', 'customer')
       .leftJoinAndSelect('quotation.items', 'items')
@@ -109,7 +117,7 @@ export class QuotationsService {
 
     if (search) {
       qb.andWhere(
-        '(quotation.title ILIKE :search OR quotation.quotationNumber ILIKE :search)',
+        '(quotation.title ILIKE :search OR quotation.quotationNumber ILIKE :search OR customer.name ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -120,6 +128,22 @@ export class QuotationsService {
 
     if (customerId) {
       qb.andWhere('quotation.customerId = :customerId', { customerId });
+    }
+
+    if (dateFrom) {
+      qb.andWhere('quotation.createdAt >= :dateFrom', { dateFrom });
+    }
+
+    if (dateTo) {
+      qb.andWhere('quotation.createdAt <= :dateTo', { dateTo: `${dateTo}T23:59:59.999Z` });
+    }
+
+    if (minTotal !== undefined) {
+      qb.andWhere('quotation.total >= :minTotal', { minTotal });
+    }
+
+    if (maxTotal !== undefined) {
+      qb.andWhere('quotation.total <= :maxTotal', { maxTotal });
     }
 
     qb.orderBy('quotation.createdAt', 'DESC');
@@ -298,6 +322,11 @@ export class QuotationsService {
   async generatePdf(id: string): Promise<Buffer> {
     const quotation = await this.findOne(id);
 
+    // Load company settings for the organization
+    const companySettings = quotation.organizationId
+      ? await this.companySettingsRepository.findOne({ where: { organizationId: quotation.organizationId } })
+      : null;
+
     const templatePath = path.join(process.cwd(), 'templates', 'quotation-pdf.hbs');
     const templateSource = fs.readFileSync(templatePath, 'utf-8');
 
@@ -319,6 +348,10 @@ export class QuotationsService {
 
     Handlebars.registerHelper('add', (a: number, b: number) => a + b);
 
+    const statusLabels: Record<string, string> = {
+      draft: 'Draft', sent: 'Sent', accepted: 'Accepted', rejected: 'Rejected', expired: 'Expired',
+    };
+
     const template = Handlebars.compile(templateSource);
 
     const subtotal = Number(quotation.subtotal);
@@ -330,6 +363,8 @@ export class QuotationsService {
 
     const html = template({
       ...quotation,
+      companySettings,
+      statusLabel: statusLabels[quotation.status] || quotation.status,
       discountAmount,
       taxAmount,
     });
@@ -366,6 +401,8 @@ export class QuotationsService {
         },
         totalRevenue: 0,
         acceptedRevenue: 0,
+        acceptanceRate: 0,
+        conversionRate: 0,
         totalCustomers: 0,
         totalProducts: 0,
         recentQuotations: [],
@@ -462,16 +499,65 @@ export class QuotationsService {
       total: parseFloat(row.total) || 0,
     }));
 
+    // acceptanceRate: accepted / (accepted + rejected) — how many decided quotations are accepted
+    const decided = statusBreakdown[QuotationStatus.ACCEPTED] + statusBreakdown[QuotationStatus.REJECTED];
+    const acceptanceRate = decided > 0
+      ? Math.round((statusBreakdown[QuotationStatus.ACCEPTED] / decided) * 100)
+      : 0;
+
+    // conversionRate: (sent + accepted) / total — how many quotations moved past draft
+    const converted = statusBreakdown[QuotationStatus.SENT] + statusBreakdown[QuotationStatus.ACCEPTED]
+      + statusBreakdown[QuotationStatus.REJECTED] + statusBreakdown[QuotationStatus.EXPIRED];
+    const conversionRate = totalQuotations > 0
+      ? Math.round((converted / totalQuotations) * 100)
+      : 0;
+
     return {
       totalQuotations,
       statusBreakdown,
       totalRevenue: parseFloat(revenueRow?.totalRevenue) || 0,
       acceptedRevenue: parseFloat(revenueRow?.acceptedRevenue) || 0,
+      acceptanceRate,
+      conversionRate,
       totalCustomers,
       totalProducts,
       recentQuotations,
       monthlyTrend,
     };
+  }
+
+  async sendEmail(id: string, dto: SendEmailDto, userId: string, organizationId: string): Promise<void> {
+    const quotation = await this.findOne(id, organizationId);
+
+    const companySettings = quotation.organizationId
+      ? await this.companySettingsRepository.findOne({ where: { organizationId: quotation.organizationId } })
+      : null;
+
+    const pdfBuffer = await this.generatePdf(id);
+
+    await this.emailService.sendQuotationEmail({
+      to: dto.to,
+      cc: dto.cc,
+      subject: dto.subject,
+      body: dto.body,
+      pdfBuffer,
+      quotationNumber: quotation.quotationNumber,
+      companyName: companySettings?.companyName,
+    });
+
+    // Log EMAIL_SENT history entry before updating status
+    await this.historyRepository.save({
+      quotationId: id,
+      action: HistoryAction.EMAIL_SENT,
+      changes: { to: dto.to, ...(dto.cc ? { cc: dto.cc } : {}) },
+      performedBy: userId,
+      note: `Quotation ${quotation.quotationNumber} emailed to ${dto.to}`,
+    });
+
+    // Transition status to "sent" (logs STATUS_CHANGED history internally)
+    await this.updateStatus(id, QuotationStatus.SENT, userId, organizationId);
+
+    this.logger.log(`Quotation ${quotation.quotationNumber} sent via email to ${dto.to} by user ${userId}`);
   }
 
   private async generateQuotationNumber(): Promise<string> {

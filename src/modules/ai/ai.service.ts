@@ -58,33 +58,33 @@ export class AiService {
       const response = await this.client.messages.create({
         model,
         max_tokens: 4096,
-        system: `Ban la tro ly tao bao gia chuyen nghiep. Khi nguoi dung mo ta yeu cau, hay tao mot bao gia chi tiet voi cac hang muc cu the, don vi tinh, so luong va gia bang VND.
+        system: `You are a professional quotation assistant. When the user describes their requirements, generate a detailed quotation with specific line items, units of measure, quantities, and prices in VND.
 
-Tra ve ket qua dang JSON voi format sau:
+Return the result as JSON with the following format:
 {
-  "title": "Tieu de bao gia",
+  "title": "Quotation title",
   "items": [
     {
-      "name": "Ten hang muc",
-      "description": "Mo ta chi tiet",
-      "unit": "Don vi tinh (goi/gio/thang/cai...)",
+      "name": "Item name",
+      "description": "Detailed description",
+      "unit": "Unit of measure (package/hour/month/piece...)",
       "quantity": 1,
       "unitPrice": 10000000
     }
   ],
-  "notes": "Ghi chu cho bao gia",
-  "terms": "Dieu khoan thanh toan va dieu kien"
+  "notes": "Quotation notes",
+  "terms": "Payment terms and conditions"
 }
 
-Luu y:
-- Gia phai thuc te theo thi truong Viet Nam
-- Tach cac hang muc chi tiet, khong gop chung
-- Don vi tinh phu hop voi tung hang muc
-- Them ghi chu va dieu khoan chuyen nghiep`,
+Notes:
+- Prices must be realistic for the Vietnam market
+- Break down items in detail, do not combine
+- Use appropriate units of measure for each item
+- Include professional notes and terms`,
         messages: [
           {
             role: 'user',
-            content: `Hay tao bao gia cho yeu cau sau:\n\n${description}`,
+            content: `Generate a quotation for the following requirements:\n\n${description}`,
           },
         ],
       });
@@ -127,30 +127,30 @@ Luu y:
     const model = 'claude-sonnet-4-20250514';
     try {
       const existingContext = existingItems?.length
-        ? `\n\nCac hang muc da co: ${existingItems.join(', ')}`
+        ? `\n\nExisting items: ${existingItems.join(', ')}`
         : '';
 
       const response = await this.client.messages.create({
         model,
         max_tokens: 4096,
-        system: `Ban la tro ly tao bao gia. Khi nguoi dung cung cap tieu de bao gia, hay goi y cac hang muc phu hop.
+        system: `You are a quotation assistant. When the user provides a quotation title, suggest appropriate line items.
 
-Tra ve JSON array voi format:
+Return a JSON array with the following format:
 [
   {
-    "name": "Ten hang muc",
-    "description": "Mo ta",
-    "unit": "Don vi tinh",
+    "name": "Item name",
+    "description": "Description",
+    "unit": "Unit of measure",
     "quantity": 1,
     "unitPrice": 10000000
   }
 ]
 
-Gia phai thuc te theo thi truong Viet Nam (VND). Khong lap lai hang muc da co.`,
+Prices must be realistic for the Vietnam market (VND). Do not repeat existing items.`,
         messages: [
           {
             role: 'user',
-            content: `Goi y hang muc cho bao gia: "${title}"${existingContext}`,
+            content: `Suggest items for the quotation: "${title}"${existingContext}`,
           },
         ],
       });
@@ -194,11 +194,11 @@ Gia phai thuc te theo thi truong Viet Nam (VND). Khong lap lai hang muc da co.`,
       const response = await this.client.messages.create({
         model,
         max_tokens: 1024,
-        system: `Ban la tro ly viet noi dung chuyen nghiep cho bao gia. Hay cai thien mo ta hang muc de chuyen nghiep, chi tiet va thuyet phuc hon. Tra ve chi mo ta da cai thien, khong them gi khac.`,
+        system: `You are a professional copywriter for quotations. Improve the item description to be more professional, detailed, and persuasive. Return only the improved description, nothing else.`,
         messages: [
           {
             role: 'user',
-            content: `Cai thien mo ta cho hang muc "${itemName}":\n\nMo ta hien tai: ${currentDescription}`,
+            content: `Improve the description for item "${itemName}":\n\nCurrent description: ${currentDescription}`,
           },
         ],
       });

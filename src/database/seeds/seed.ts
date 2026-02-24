@@ -62,15 +62,15 @@ async function seed() {
   if (existingSettings === 0) {
     await settingsRepo.save({
       organizationId: DEFAULT_ORG_ID,
-      companyName: 'Cong ty TNHH ABC',
+      companyName: 'ABC Company Ltd.',
       companyNameEn: 'ABC Company Ltd.',
       taxCode: '0123456789',
-      address: '123 Nguyen Van Linh, Quan 7, TP.HCM',
+      address: '123 Nguyen Van Linh, District 7, Ho Chi Minh City',
       phone: '028 1234 5678',
       email: 'info@abc.com.vn',
       quotationPrefix: 'BG',
-      quotationTerms: 'Bao gia co hieu luc 30 ngay ke tu ngay phat hanh.',
-      quotationNotes: 'Cam on quy khach da su dung dich vu cua chung toi.',
+      quotationTerms: 'This quotation is valid for 30 days from the date of issue.',
+      quotationNotes: 'Thank you for choosing our services.',
     });
     console.log('Company settings seeded');
   }

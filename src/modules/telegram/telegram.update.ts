@@ -29,7 +29,7 @@ export class TelegramUpdate {
   async onStart(@Ctx() ctx: Context) {
     await ctx.replyWithHTML(
       [
-        '<b>Bao Gia Bot</b> 🤖',
+        '<b>Quotation Bot</b> 🤖',
         '',
         'Quotation management bot. Use /help to see available commands.',
       ].join('\n'),

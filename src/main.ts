@@ -29,7 +29,7 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Bao Gia API')
+    .setTitle('Quotation Management API')
     .setDescription('Quotation Management System API')
     .setVersion('1.0')
     .addBearerAuth()

@@ -389,7 +389,7 @@ describe('TemplatesService', () => {
 
       const result = await service.apply(TEMPLATE_ID, applyDto, ORG_ID);
 
-      expect(result.title).toBe('Bao gia tu template: Website Template');
+      expect(result.title).toBe('Quotation from template: Website Template');
     });
 
     it('should set customerId when provided in applyDto', async () => {

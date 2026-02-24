@@ -56,7 +56,7 @@ const makeProduct = (overrides: Partial<Product> = {}): Product =>
     organizationId: ORG_ID,
     name: 'Centrifuge Model X200',
     description: 'High-speed centrifuge',
-    unit: 'cai',
+    unit: 'unit',
     defaultPrice: 15000,
     category: 'lab',
     isActive: true,
@@ -195,9 +195,9 @@ const extractedItems = [
 
 const translatedItems = [
   {
-    name: 'May ly tam Model X200',
-    description: 'May ly tam toc do cao',
-    unit: 'cai',
+    name: 'Centrifuge Model X200',
+    description: 'High-speed centrifuge',
+    unit: 'unit',
     quantity: 2,
     unitPrice: 15000,
     currency: 'USD',
@@ -603,15 +603,15 @@ describe('IngestionService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // translateToVietnamese()
+  // translateToEnglish()
   // ---------------------------------------------------------------------------
-  describe('translateToVietnamese', () => {
+  describe('translateToEnglish', () => {
     const translatedPayload = {
-      title: 'Bao gia tu ABC Vendor',
+      title: 'Quotation from ABC Vendor',
       vendorName: 'ABC Vendor',
       items: translatedItems,
-      notes: 'Giao hang trong 30 ngay',
-      terms: 'Thanh toan net 30',
+      notes: 'Delivery in 30 days',
+      terms: 'Net 30 payment',
     };
 
     const inputData = {
@@ -626,22 +626,22 @@ describe('IngestionService', () => {
       mockAnthropicCreate.mockResolvedValue(makeAiResponse(translatedPayload));
     });
 
-    it('should translate items and return Vietnamese result', async () => {
-      const result = await service.translateToVietnamese(
+    it('should translate items and return English result', async () => {
+      const result = await service.translateToEnglish(
         inputData,
         EXECUTION_ID,
         JOB_ID,
         ORG_ID,
       );
 
-      expect(result.title).toBe('Bao gia tu ABC Vendor');
+      expect(result.title).toBe('Quotation from ABC Vendor');
       expect(result.items).toHaveLength(1);
-      expect(result.items[0].name).toBe('May ly tam Model X200');
+      expect(result.items[0].name).toBe('Centrifuge Model X200');
       expect(result.tokenUsage).toEqual({ inputTokens: 100, outputTokens: 200 });
     });
 
     it('should update job status to TRANSLATING at the start', async () => {
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       expect(mockJobsRepo.update).toHaveBeenCalledWith(
         JOB_ID,
@@ -653,7 +653,7 @@ describe('IngestionService', () => {
       const glossaryTerm = makeGlossaryTerm();
       mockGlossaryRepo.find.mockResolvedValue([glossaryTerm]);
 
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       const call = mockAnthropicCreate.mock.calls[0][0];
       expect(call.system).toContain('centrifuge');
@@ -663,20 +663,20 @@ describe('IngestionService', () => {
     it('should not inject glossary section when there are no glossary terms', async () => {
       mockGlossaryRepo.find.mockResolvedValue([]);
 
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       const call = mockAnthropicCreate.mock.calls[0][0];
       expect(call.system).not.toContain('Use these EXACT translations');
     });
 
     it('should not load glossary when organizationId is not provided', async () => {
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, undefined);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, undefined);
 
       expect(mockGlossaryRepo.find).not.toHaveBeenCalled();
     });
 
     it('should track token usage after translation', async () => {
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       expect(mockTokenTracking.track).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -695,10 +695,10 @@ describe('IngestionService', () => {
       });
 
       await expect(
-        service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
+        service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
+        service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
       ).rejects.toThrow('Unexpected AI response type');
     });
 
@@ -709,10 +709,10 @@ describe('IngestionService', () => {
       });
 
       await expect(
-        service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
+        service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
+        service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID),
       ).rejects.toThrow('Could not parse JSON from AI translation response');
     });
 
@@ -720,7 +720,7 @@ describe('IngestionService', () => {
       const promptVersion = makePromptVersion({ type: PromptType.TRANSLATE, model: 'claude-haiku-4-5-20251001' });
       mockPromptVersionRepo.findOne.mockResolvedValue(promptVersion);
 
-      await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       expect(mockAnthropicCreate).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'claude-haiku-4-5-20251001' }),
@@ -732,7 +732,7 @@ describe('IngestionService', () => {
         makeAiResponse({ ...translatedPayload, title: null }),
       );
 
-      const result = await service.translateToVietnamese(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
+      const result = await service.translateToEnglish(inputData, EXECUTION_ID, JOB_ID, ORG_ID);
 
       expect(result.title).toBeNull();
     });
@@ -743,11 +743,11 @@ describe('IngestionService', () => {
   // ---------------------------------------------------------------------------
   describe('normalizeData', () => {
     const translatedData = {
-      title: 'Bao gia tu ABC Medical Supplies',
+      title: 'Quotation from ABC Medical Supplies',
       vendorName: 'ABC Medical Supplies',
       items: translatedItems,
-      notes: 'Giao hang trong 30 ngay',
-      terms: 'Thanh toan net 30',
+      notes: 'Delivery in 30 days',
+      terms: 'Net 30 payment',
     };
 
     beforeEach(() => {
@@ -766,7 +766,7 @@ describe('IngestionService', () => {
         ORG_ID,
       );
 
-      expect(result.title).toBe('Bao gia tu ABC Medical Supplies');
+      expect(result.title).toBe('Quotation from ABC Medical Supplies');
       expect(result.items).toHaveLength(1);
       expect(result.items[0].matchConfidence).toBe('exact');
       expect(result.items[0].productId).toBe(PRODUCT_ID);
@@ -841,7 +841,7 @@ describe('IngestionService', () => {
     });
 
     it('should mark item as exact match when product name matches exactly', async () => {
-      const product = makeProduct({ name: 'May ly tam Model X200' });
+      const product = makeProduct({ name: 'Centrifuge Model X200' });
       mockProductsRepo.findOne.mockResolvedValue(product);
 
       const result = await service.normalizeData(
@@ -858,7 +858,7 @@ describe('IngestionService', () => {
 
     it('should mark item as fuzzy match and add warning on fuzzy product match', async () => {
       const exactProduct = null;
-      const fuzzyProduct = makeProduct({ name: 'May ly tam X200 Pro' });
+      const fuzzyProduct = makeProduct({ name: 'Centrifuge X200 Pro' });
       mockProductsRepo.findOne
         .mockResolvedValueOnce(exactProduct) // exact match fails
         .mockResolvedValueOnce(fuzzyProduct); // fuzzy match succeeds
@@ -927,7 +927,7 @@ describe('IngestionService', () => {
       expect(result.warnings.some((w) => w.includes('invalid unit price'))).toBe(true);
     });
 
-    it('should default missing unit to "cai"', async () => {
+    it('should default missing unit to "unit"', async () => {
       const dataWithNoUnit = {
         ...translatedData,
         items: [{ ...translatedItems[0], unit: '' }],
@@ -941,7 +941,7 @@ describe('IngestionService', () => {
         ORG_ID,
       );
 
-      expect(result.items[0].unit).toBe('cai');
+      expect(result.items[0].unit).toBe('unit');
     });
 
     it('should default currency to VND when not provided', async () => {

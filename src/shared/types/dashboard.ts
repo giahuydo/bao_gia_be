@@ -5,6 +5,8 @@ export interface IDashboardStats {
   statusBreakdown: Record<QuotationStatus, number>;
   totalRevenue: number;
   acceptedRevenue: number;
+  acceptanceRate: number;
+  conversionRate: number;
   totalCustomers: number;
   totalProducts: number;
   recentQuotations: IDashboardQuotation[];

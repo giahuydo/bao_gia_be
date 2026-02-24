@@ -2,11 +2,11 @@ import { IsString, IsOptional, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SuggestItemsDto {
-  @ApiProperty({ example: 'Bao gia thiet ke website ecommerce' })
+  @ApiProperty({ example: 'E-commerce website design quotation' })
   @IsString()
   title: string;
 
-  @ApiPropertyOptional({ example: ['Thiet ke UI/UX', 'Lap trinh backend'] })
+  @ApiPropertyOptional({ example: ['UI/UX Design', 'Backend Development'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

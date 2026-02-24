@@ -9,6 +9,8 @@ import {
   Query,
   Res,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiProduces, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -17,6 +19,7 @@ import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { QuotationQueryDto } from './dto/quotation-query.dto';
+import { SendEmailDto } from './dto/send-email.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../../database/entities/user.entity';
@@ -90,5 +93,20 @@ export class QuotationsController {
       'Content-Length': pdfBuffer.length,
     });
     res.end(pdfBuffer);
+  }
+
+  @Post(':id/send-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send quotation via email as PDF attachment' })
+  @ApiResponse({ status: 200, description: 'Email sent successfully and quotation status updated to sent' })
+  @ApiResponse({ status: 400, description: 'Email service not configured or invalid input' })
+  @ApiResponse({ status: 404, description: 'Quotation not found' })
+  async sendEmail(
+    @Param('id') id: string,
+    @Body() sendEmailDto: SendEmailDto,
+    @CurrentUser() user: any,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.quotationsService.sendEmail(id, sendEmailDto, user.id, user.organizationId);
+    return { success: true, message: 'Email sent successfully' };
   }
 }

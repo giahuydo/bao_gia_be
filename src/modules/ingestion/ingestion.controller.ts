@@ -72,7 +72,7 @@ export class IngestionController {
       `POST /ingestion/translate | items=${dto.extractedData.items.length} | executionId=${executionId || 'none'} | jobId=${jobId || 'none'}`,
     );
 
-    const result = await this.ingestionService.translateToVietnamese(
+    const result = await this.ingestionService.translateToEnglish(
       dto.extractedData,
       executionId,
       jobId,
