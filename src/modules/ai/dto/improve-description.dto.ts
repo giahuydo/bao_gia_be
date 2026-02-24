@@ -2,11 +2,11 @@ import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ImproveDescriptionDto {
-  @ApiProperty({ example: 'Thiet ke UI' })
+  @ApiProperty({ example: 'UI Design' })
   @IsString()
   itemName: string;
 
-  @ApiProperty({ example: 'Thiet ke giao dien cho website' })
+  @ApiProperty({ example: 'Website interface design' })
   @IsString()
   currentDescription: string;
 }

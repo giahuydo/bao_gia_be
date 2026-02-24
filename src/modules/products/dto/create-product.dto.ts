@@ -2,16 +2,16 @@ import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'Thiet ke website' })
+  @ApiProperty({ example: 'Website Design' })
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Thiet ke website responsive, SEO friendly' })
+  @ApiPropertyOptional({ example: 'Responsive website design, SEO friendly' })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'goi' })
+  @ApiProperty({ example: 'package' })
   @IsString()
   unit: string;
 

@@ -12,7 +12,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class TemplateItemDto {
-  @ApiProperty({ example: 'Thiet ke giao dien' })
+  @ApiProperty({ example: 'UI/UX Design' })
   @IsString()
   name: string;
 
@@ -21,7 +21,7 @@ export class TemplateItemDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'goi' })
+  @ApiProperty({ example: 'package' })
   @IsString()
   unit: string;
 
@@ -35,7 +35,7 @@ export class TemplateItemDto {
 }
 
 export class CreateTemplateDto {
-  @ApiProperty({ example: 'Template website co ban' })
+  @ApiProperty({ example: 'Basic Website Template' })
   @IsString()
   name: string;
 

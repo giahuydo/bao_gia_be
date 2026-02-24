@@ -16,15 +16,15 @@ const makeTemplate = (overrides: Partial<Template> = {}): Template =>
   ({
     id: TEMPLATE_ID,
     organizationId: ORG_ID,
-    name: 'Template website co ban',
-    description: 'Template danh cho du an website',
-    defaultTerms: 'Thanh toan trong 30 ngay',
-    defaultNotes: 'Lien he de biet them chi tiet',
+    name: 'Basic Website Template',
+    description: 'Template for website projects',
+    defaultTerms: 'Payment within 30 days',
+    defaultNotes: 'Contact us for more details',
     defaultTax: 10,
     defaultDiscount: 0,
     items: [
-      { name: 'Thiet ke giao dien', unit: 'goi', quantity: 1, unitPrice: 15000000 },
-      { name: 'Lap trinh backend', unit: 'goi', quantity: 1, unitPrice: 20000000 },
+      { name: 'UI/UX Design', unit: 'package', quantity: 1, unitPrice: 15000000 },
+      { name: 'Backend Development', unit: 'package', quantity: 1, unitPrice: 20000000 },
     ],
     isDefault: false,
     createdBy: USER_ID,
@@ -417,8 +417,8 @@ describe('TemplatesService', () => {
     it('should map template items to quotation items with computed amount and sortOrder', async () => {
       const template = makeTemplate({
         items: [
-          { name: 'Thiet ke giao dien', unit: 'goi', quantity: 2, unitPrice: 15000000 },
-          { name: 'Lap trinh backend', description: 'API dev', unit: 'goi', quantity: 1, unitPrice: 20000000 },
+          { name: 'UI/UX Design', unit: 'package', quantity: 2, unitPrice: 15000000 },
+          { name: 'Backend Development', description: 'API dev', unit: 'package', quantity: 1, unitPrice: 20000000 },
         ],
       });
       mockRepo.findOne.mockResolvedValue(template);
@@ -427,15 +427,15 @@ describe('TemplatesService', () => {
 
       expect(result.items).toHaveLength(2);
       expect(result.items[0]).toMatchObject({
-        name: 'Thiet ke giao dien',
-        unit: 'goi',
+        name: 'UI/UX Design',
+        unit: 'package',
         quantity: 2,
         unitPrice: 15000000,
         amount: 30000000,
         sortOrder: 0,
       });
       expect(result.items[1]).toMatchObject({
-        name: 'Lap trinh backend',
+        name: 'Backend Development',
         description: 'API dev',
         amount: 20000000,
         sortOrder: 1,

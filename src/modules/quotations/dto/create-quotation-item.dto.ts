@@ -7,16 +7,16 @@ export class CreateQuotationItemDto {
   @IsUUID()
   productId?: string;
 
-  @ApiProperty({ example: 'Thiet ke giao dien' })
+  @ApiProperty({ example: 'UI/UX Design' })
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Thiet ke UI/UX cho 10 trang' })
+  @ApiPropertyOptional({ example: 'UI/UX design for 10 pages' })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'goi' })
+  @ApiProperty({ example: 'package' })
   @IsString()
   unit: string;
 

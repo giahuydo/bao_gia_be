@@ -2,7 +2,7 @@ import { IsString, IsOptional, IsEmail } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCustomerDto {
-  @ApiProperty({ example: 'Cong ty ABC' })
+  @ApiProperty({ example: 'ABC Company' })
   @IsString()
   name: string;
 
@@ -16,7 +16,7 @@ export class CreateCustomerDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '123 Nguyen Hue, Q1, HCM' })
+  @ApiPropertyOptional({ example: '123 Main Street, District 1, HCMC' })
   @IsOptional()
   @IsString()
   address?: string;
@@ -26,7 +26,7 @@ export class CreateCustomerDto {
   @IsString()
   taxCode?: string;
 
-  @ApiPropertyOptional({ example: 'Nguyen Van A' })
+  @ApiPropertyOptional({ example: 'John Smith' })
   @IsOptional()
   @IsString()
   contactPerson?: string;
