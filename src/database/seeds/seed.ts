@@ -7,13 +7,20 @@ dotenv.config();
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 async function seed() {
+  const databaseUrl = process.env.DATABASE_URL;
+  const connectionConfig = databaseUrl
+    ? { url: databaseUrl, ssl: { rejectUnauthorized: false } }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        username: process.env.DB_USERNAME || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        database: process.env.DB_DATABASE || 'bao_gia',
+      };
+
   const dataSource = new DataSource({
     type: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    username: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_DATABASE || 'bao_gia',
+    ...connectionConfig,
     entities: ['src/database/entities/*.entity.ts'],
     synchronize: true,
   });
